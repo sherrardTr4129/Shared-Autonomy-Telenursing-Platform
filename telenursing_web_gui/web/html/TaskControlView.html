@@ -1,0 +1,57 @@
+<!-- The navigation menu -->
+<head>
+  <link rel='stylesheet' type='text/css' href='../css/GUINavBar.css'>
+  <link rel='stylesheet' type='text/css' href='../css/MainPageThreeColumn.css'>
+  <script src="../js/joy.js"></script>
+</head>
+
+<div class="navbar">
+  <a href="MainGUIPage.html">Mobile Robot Control View</a>
+  <a class="active" href="#">Task Control View</a>
+  <a href="GUIInfoPage.html">GUI Information</a>
+</div>
+
+<section class="columns">
+	<div class="column" align="center">
+		<h2>Secondary Camera View</h2>
+		<iframe img src="http://localhost:8080/stream_viewer?topic=/trina2_1/right_arm_cam/color/image_raw" width="400" height="400"></iframe>
+	</div>
+	<div class="column" align="center">
+                <h2>Primary Camera View</h2>
+                <iframe img src="http://localhost:8080/stream_viewer?topic=/trina2_1/right_arm_cam/color/image_raw" width="600" height="600"></iframe>
+        </div>
+
+</section>
+
+<section class="columns">
+	<div class="column" align="center">
+		<h2>Cartesian Control (X-Y)</h2>
+		<h4>Up and down on the Joystick controls the Y-Axis position of the robot arm end-effector. Left and Right on the Joystick controls the X-Axis position of the robot arm end-effector</h4>
+		<div id="joy3" style="width:200px;height:200px;margin:30px"></div>
+	</div>
+
+	<div class="column" align="center">
+		<h2>Cartesian Control (Z)</h2>
+		<h4>Up and down on the Joystick controls the Z-Axis position of the robot arm end-effector.</h4>
+		<div id="joy4" style="width:200px;height:200px;margin:50px"></div>
+	</div>
+
+	<div class="column" align="center">
+                <h2>Pitch and Yaw Control</h2>
+		<h4>Up and down on the Joystick controls the Yaw of the robot arm end-effector. Left and Right on the Joystick controls the Pitch of the robot arm end-effector.<h4>
+                <div id="joy5" style="width:200px;height:200px;margin:50px"></div>
+        </div>
+
+</section>
+
+<section class="columns">
+        <div class="column" align="center">
+        	<h2>Roll Control</h2>
+		<h4>Up and down on the Joystick controls the Roll of the robot arm end-effector.</h4>
+		<div id="joy6" style="width:200px;height:200px;margin:50px"></div>
+	</div>
+
+</section>
+
+<script src="../js/joyReaderTaskCTRL.js"></script>
+

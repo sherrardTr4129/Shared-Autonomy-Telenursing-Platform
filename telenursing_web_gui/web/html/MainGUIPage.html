@@ -1,0 +1,43 @@
+<!-- The navigation menu -->
+<head>
+  <link rel='stylesheet' type='text/css' href='../css/GUINavBar.css'>
+  <link rel='stylesheet' type='text/css' href='../css/MainPageThreeColumn.css'>
+  <script src="../js/joy.js"></script>
+</head>
+
+<div class="navbar">
+  <a class="active" href="#">Mobile Robot Control View</a>
+  <a href="TaskControlView.html">Task Control View</a>
+  <a href="GUIInfoPage.html">GUI Information</a>
+</div>
+
+<section class="columns">
+	<div class="column" align="center">
+		<h2>Secondary Camera View</h2>
+		<iframe img src="http://localhost:8080/stream_viewer?topic=/trina2_1/right_arm_cam/color/image_raw" width="400" height="400"></iframe>
+
+	</div>
+</section>
+<section class="columns">
+	<div class="column" align="center">
+		<h2>Primary Camera View</h2>
+		<iframe img src="http://localhost:8080/stream_viewer?topic=/trina2_1/right_arm_cam/color/image_raw" width="600" height="600"></iframe>
+	</div>
+
+</section>
+
+<section class="columns">
+	<div class="column" align="center">
+		<h2>Forward/Reverse Control</h2>
+		<h4>Up on Joystick is forward, Down is Reverse</h4>
+		<div id="joy1" style="width:200px;height:200px;margin:50px"></div>
+	</div>
+
+	<div class="column" align="center">
+		<h2>Rotation Control</h2>
+		<h4>Left on Joystick will spin robot in place CCW, Right on Joystick will spin robot in place CW</h4>
+		<div id="joy2" style="width:200px;height:200px;margin:50px"></div>
+	</div>
+
+	<script src="../js/joyReaderMobile.js"></script>
+</section>

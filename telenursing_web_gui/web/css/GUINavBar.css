@@ -1,0 +1,37 @@
+/* Style the navigation menu */
+.navbar {
+  width: 100%;
+  background-color: #555;
+  overflow: auto;
+}
+
+/* Navigation links */
+.navbar a {
+  float: left;
+  padding: 12px;
+  color: white;
+  text-decoration: none;
+  font-size: 17px;
+  width: 32.0%; 
+  text-align: center; 
+}
+
+/* Add a background color on mouse-over */
+.navbar a:hover {
+  background-color: #000;
+}
+
+/* Style the current/active link */
+.navbar a.active {
+  background-color: #4CAF50;
+}
+
+/* Add responsiveness - on screens less than 500px, make the navigation links appear on top of each other, instead of next to each other */
+@media screen and (max-width: 500px) {
+  .navbar a {
+    float: none;
+    display: block;
+    width: 100%;
+    text-align: left;
+  }
+}
