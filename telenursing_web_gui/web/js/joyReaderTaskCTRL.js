@@ -27,7 +27,7 @@ setInterval(function(){ xyData.y = Joy3.GetY(); }, 50);
 setInterval(function(){ sendXYData() }, 200);
 
 var Joy4 = new JoyStick('joy4');
-var zURL = "http://localhost:5000/zPost"
+var zURL = "http://localhost:5000/zJoyPost"
 var zData = {
         "z": 0
 }
@@ -47,7 +47,7 @@ setInterval(function(){ zData.z=Joy4.GetY(); }, 50);
 setInterval(function(){ sendZData() }, 200);
 
 var Joy5 = new JoyStick('joy5');
-var pitchYawURL = "http://localhost:5000/rollJoyPost"
+var pitchYawURL = "http://localhost:5000/yawPitchJoyPost"
 var pitchYawData = {
         "pitch": 0,
 	"yaw": 0
