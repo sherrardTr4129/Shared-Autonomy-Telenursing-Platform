@@ -22,12 +22,38 @@ global x,y,z,yaw,p,r
 global fwdRev, spin
 global MobilePageActive
 global TaskPageActive
+global primaryStreamURL
+global secondaryStreamURL
 
 # initalize globals
 x,y,z,yaw,p,r = (0, 0, 0, 0, 0, 0)
 fwdRev, spin = (0,0)
 MobilePageActive = False
 TaskPageActive = False
+primaryStreamURL = "http://localhost:8080/stream_viewer?topic=/trina2_1/right_arm_cam/color/image_raw"
+secondaryStreamURL = "http://localhost:8080/stream_viewer?topic=/trina2_1/right_arm_cam/color/image_raw"
+
+@app.route("/setPrimaryStream", methods=['POST'])
+def setPrimaryStreamCB():
+    """
+    """
+    global primaryStreamURL
+    global secondaryStreamURL
+
+    streamDict = request.get_json()
+    primaryStreamURL = str(streamDict["primaryStream"])
+    secondaryStreamURL = str(streamDict["secondaryStream"])
+
+    return "OK"
+
+
+@app.route("/getPrimaryStream", methods=['GET'])
+def getPrimaryStreamCB():
+    global primaryStreamURL
+    global secondaryStreamURL
+
+    jsonStr = jsonify({'primaryStream' : primaryStreamURL, 'secondaryStream' : secondaryStreamURL})
+    return jsonStr
 
 @app.route("/mobilePageActive", methods=['POST'])
 def mobilePageReadyCB():
