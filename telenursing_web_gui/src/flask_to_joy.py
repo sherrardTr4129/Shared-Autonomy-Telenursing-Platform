@@ -20,10 +20,54 @@ CORS(app)
 # setup globals
 global x,y,z,yaw,p,r
 global fwdRev, spin
+global MobilePageActive
+global TaskPageActive
 
 # initalize globals
 x,y,z,yaw,p,r = (0, 0, 0, 0, 0, 0)
 fwdRev, spin = (0,0)
+MobilePageActive = False
+TaskPageActive = False
+
+@app.route("/mobilePageActive", methods=['POST'])
+def mobilePageReadyCB():
+    """
+    This function serves as the callback to the mobile page active API endpoint.
+    Calls to this endpoint are made on page load of the mobile robot control page. This
+    function updates the global state of the current loaded page.
+
+    params:
+        None
+    returns:
+        status (string)
+    """
+
+    global MobilePageActive
+    global TaskPageActive
+    MobilePageActive = True
+    TaskPageActive = False
+
+    return "OK"
+
+@app.route("/taskPageActive", methods=['POST'])
+def taskPageReadyCB():
+    """
+    This function serves as the callback to the task page active API endpoint.
+    Calls to this endpoint are made on page load of the task view and control page. This
+    function updates the global state of the current loaded page.
+
+    params:
+        None
+    returns:
+        status (string)
+    """
+
+    global MobilePageActive
+    global TaskPageActive
+    MobilePageActive = False
+    TaskPageActive = True
+
+    return "OK"
 
 @app.route('/fwdRevJoyPost', methods=['POST'])
 def fwdRevJoyDataCB():
@@ -131,7 +175,7 @@ def rollJoyDataCB():
     return "OK"
 
 
-def publishLoopThread(joyPub):
+def publishLoopThread(joyPub, mobileActivePub, taskActivePub):
     """
     This function will be instantiated as a thread. This thread will continually
     publish the global variables that are being updated in the above callbacks
@@ -139,14 +183,18 @@ def publishLoopThread(joyPub):
 
     params:
         joyPub (sensor_msgs/Joy publisher obj): The instantiated Joy publisher object
-        camObjPubList (std_msgs/Bool publisher obj[]): A list of instantiated Bool publisher objects
-
+        mobileActivePub (std_msgs/Bool publisher): A Bool publisher object for the 
+                                                   mobile control page active status
+        taskActivePub (std_msgs/Bool publisher): A Bool publisher object for the
+                                                 task control page active status
     returns:
         None
     """
     # setup globals
     global x,y,z,yaw,p,r
     global fwdRev, spin
+    global MobilePageActive
+    global TaskPageActive
 
     # initialize control variables
     zeroList = [0,0,0,0,0,0,0,0]
@@ -180,6 +228,14 @@ def publishLoopThread(joyPub):
             #update zeroCount
             zeroCount += 1
 
+        # publish mobile page active status
+        mobileActiveMessage = Bool()
+        mobileActiveMessage.data = MobilePageActive
+        mobileActivePub.publish(mobileActiveMessage)
+
+        taskActiveMessage = Bool()
+        taskActiveMessage.data = TaskPageActive
+        taskActivePub.publish(taskActiveMessage)
 
         # update delay of 200ms to match refresh rate of 200ms
         # in joystick data recieved from webpage
@@ -188,7 +244,11 @@ def publishLoopThread(joyPub):
 def main():
     # init node
     rospy.init_node('flask_to_joy')
+
+    # init publishers
     joyPub = rospy.Publisher('virtualJoystick', Joy, queue_size=1)
+    mobileActivePub = rospy.Publisher('mobilePageActive', Bool, queue_size=1)
+    taskActivePub = rospy.Publisher('taskPageActive', Bool, queue_size=1)
 
     rospy.loginfo("node initalized...")
 
@@ -196,7 +256,7 @@ def main():
     threading.Thread(target=lambda: app.run(host="0.0.0.0", port=5000)).start()
 
     # start publishing thread
-    thread = threading.Thread(target=publishLoopThread, args=(joyPub,))
+    thread = threading.Thread(target=publishLoopThread, args=(joyPub, mobileActivePub, taskActivePub,))
     thread.start()
 
 if __name__ == "__main__":
