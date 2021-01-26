@@ -5,44 +5,44 @@
  */
 
 var Joy1 = new JoyStick('joy1');
-var xyURL = "http://localhost:5000/xyJoyPost";
-var xyData = {
-	"x": 0,
-	"y": 0
+var frURL = "http://localhost:5000/fwdRevJoyPost";
+var frData = {
+	"FwdRev": 0,
 };
 
-function sendXYData()
+function sendFRData()
 {
 	$.ajax({type: 'POST',
-		url: xyURL,
-		data: JSON.stringify (xyData),
+		url: frURL,
+		data: JSON.stringify (frData),
 		success: function(data) {  },
 		contentType: "application/json",
 		dataType: 'json'
 	});
 }
 
-setInterval(function(){ xyData.x=Joy1.GetX(); }, 50);
-setInterval(function(){ xyData.y=Joy1.GetY(); }, 50);
-setInterval(function(){ sendXYData() }, 200);
+setInterval(function(){ frData.FwdRev=Joy1.GetY(); }, 50);
+setInterval(function(){ sendFRData() }, 200);
+setInterval(function(){ console.log(frData) }, 200);
 
 var Joy2 = new JoyStick('joy2');
-var zURL = "http://localhost:5000/zJoyPost"
-var zData = {
-	"z": 0
+var spinURL = "http://localhost:5000/spinJoyPost"
+var spinData = {
+	"spin": 0
 }
 
-function sendZData()
+function sendSpinData()
 {
 	$.ajax({type: 'POST',
-		url: zURL,
-		data: JSON.stringify (zData),
+		url: spinURL,
+		data: JSON.stringify (spinData),
 		success: function(data) {  },
 		contentType: "application/json",
 		dataType: 'json'
 	});
 }
 
-setInterval(function(){ zData.z=Joy2.GetY(); }, 50);
-setInterval(function(){ sendZData() }, 200);
+setInterval(function(){ spinData.spin=Joy2.GetX(); }, 50);
+setInterval(function(){ sendSpinData() }, 200);
+setInterval(function(){ console.log(spinData) }, 200);
 

@@ -5,67 +5,72 @@
  */
 
 var Joy3 = new JoyStick('joy3');
-var yawPitchURL = "http://localhost:5000/yawPitchJoyPost";
-var yawPitchData = {
-        "yaw": 0,
-        "pitch": 0
+var xyURL = "http://localhost:5000/xyJoyPost";
+var xyData = {
+        "x": 0,
+        "y": 0
 };
 
-function sendYawPitchData()
+function sendXYData()
 {
         $.ajax({type: 'POST',
-                url: yawPitchURL,
-                data: JSON.stringify (yawPitchData),
+                url: xyURL,
+                data: JSON.stringify (xyData),
                 success: function(data) {  },
                 contentType: "application/json",
                 dataType: 'json'
         });
 }
 
-setInterval(function(){ yawPitchData.pitch = Joy3.GetX(); }, 50);
-setInterval(function(){ yawPitchData.yaw = Joy3.GetY(); }, 50);
-setInterval(function(){ sendYawPitchData() }, 200);
-setInterval(function(){ console.log(yawPitchData) }, 200);
+setInterval(function(){ xyData.x = Joy3.GetX(); }, 50);
+setInterval(function(){ xyData.y = Joy3.GetY(); }, 50);
+setInterval(function(){ sendXYData() }, 200);
+setInterval(function(){ console.log(xyData) }, 200);
 
 var Joy4 = new JoyStick('joy4');
-var rollURL = "http://localhost:5000/rollJoyPost"
-var rollData = {
-        "roll": 0
+var zURL = "http://localhost:5000/zPost"
+var zData = {
+        "z": 0
 }
 
-function sendRollData()
+function sendZData()
 {
         $.ajax({type: 'POST',
-                url: rollURL,
-                data: JSON.stringify (rollData),
+                url: zURL,
+                data: JSON.stringify (zData),
                 success: function(data) {  },
                 contentType: "application/json",
                 dataType: 'json'
         });
 }
 
-setInterval(function(){ rollData.roll=Joy4.GetY(); }, 50);
-setInterval(function(){ sendRollData() }, 200);
+setInterval(function(){ zData.z=Joy4.GetY(); }, 50);
+setInterval(function(){ sendZData() }, 200);
+setInterval(function(){ console.log(zData) }, 200);
+
 
 var Joy5 = new JoyStick('joy5');
-var rollURL = "http://localhost:5000/rollJoyPost"
-var rollData = {
-        "roll": 0
+var pitchYawURL = "http://localhost:5000/rollJoyPost"
+var pitchYawData = {
+        "pitch": 0,
+	"yaw": 0
 }
 
-function sendRollData()
+function sendPitchYawData()
 {
         $.ajax({type: 'POST',
-                url: rollURL,
-                data: JSON.stringify (rollData),
+                url: pitchYawURL,
+                data: JSON.stringify (pitchYawData),
                 success: function(data) {  },
                 contentType: "application/json",
                 dataType: 'json'
         });
 }
 
-setInterval(function(){ rollData.roll=Joy5.GetY(); }, 50);
-setInterval(function(){ sendRollData() }, 200);
+setInterval(function(){ pitchYawData.yaw = Joy5.GetY(); }, 50);
+setInterval(function(){ pitchYawData.pitch = Joy5.GetX(); }, 50);
+setInterval(function(){ sendPitchYawData() }, 200);
+setInterval(function(){ console.log(pitchYawData) }, 200);
 
 var Joy6 = new JoyStick('joy6');
 var rollURL = "http://localhost:5000/rollJoyPost"
@@ -84,6 +89,8 @@ function sendRollData()
         });
 }
 
-setInterval(function(){ rollData.roll=Joy5.GetY(); }, 50);
+setInterval(function(){ rollData.roll=Joy6.GetY(); }, 50);
 setInterval(function(){ sendRollData() }, 200);
+setInterval(function(){ console.log(rollData) }, 200);
+
 
