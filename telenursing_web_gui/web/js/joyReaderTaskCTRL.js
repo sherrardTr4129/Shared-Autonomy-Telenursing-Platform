@@ -25,7 +25,6 @@ function sendXYData()
 setInterval(function(){ xyData.x = Joy3.GetX(); }, 50);
 setInterval(function(){ xyData.y = Joy3.GetY(); }, 50);
 setInterval(function(){ sendXYData() }, 200);
-setInterval(function(){ console.log(xyData) }, 200);
 
 var Joy4 = new JoyStick('joy4');
 var zURL = "http://localhost:5000/zPost"
@@ -46,8 +45,6 @@ function sendZData()
 
 setInterval(function(){ zData.z=Joy4.GetY(); }, 50);
 setInterval(function(){ sendZData() }, 200);
-setInterval(function(){ console.log(zData) }, 200);
-
 
 var Joy5 = new JoyStick('joy5');
 var pitchYawURL = "http://localhost:5000/rollJoyPost"
@@ -70,7 +67,6 @@ function sendPitchYawData()
 setInterval(function(){ pitchYawData.yaw = Joy5.GetY(); }, 50);
 setInterval(function(){ pitchYawData.pitch = Joy5.GetX(); }, 50);
 setInterval(function(){ sendPitchYawData() }, 200);
-setInterval(function(){ console.log(pitchYawData) }, 200);
 
 var Joy6 = new JoyStick('joy6');
 var rollURL = "http://localhost:5000/rollJoyPost"
@@ -91,6 +87,4 @@ function sendRollData()
 
 setInterval(function(){ rollData.roll=Joy6.GetY(); }, 50);
 setInterval(function(){ sendRollData() }, 200);
-setInterval(function(){ console.log(rollData) }, 200);
-
 

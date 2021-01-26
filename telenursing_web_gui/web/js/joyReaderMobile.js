@@ -23,7 +23,6 @@ function sendFRData()
 
 setInterval(function(){ frData.FwdRev=Joy1.GetY(); }, 50);
 setInterval(function(){ sendFRData() }, 200);
-setInterval(function(){ console.log(frData) }, 200);
 
 var Joy2 = new JoyStick('joy2');
 var spinURL = "http://localhost:5000/spinJoyPost"
@@ -44,5 +43,4 @@ function sendSpinData()
 
 setInterval(function(){ spinData.spin=Joy2.GetX(); }, 50);
 setInterval(function(){ sendSpinData() }, 200);
-setInterval(function(){ console.log(spinData) }, 200);
 
