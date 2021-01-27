@@ -4,6 +4,7 @@
  * Since: January 26th, 2021
  */
 
+// read fwdRev data joystick and send data to flask app on 200 ms interval
 var Joy1 = new JoyStick('joy1');
 var frURL = "http://localhost:5000/fwdRevJoyPost";
 var frData = {
@@ -24,6 +25,7 @@ function sendFRData()
 setInterval(function(){ frData.FwdRev=Joy1.GetY(); }, 50);
 setInterval(function(){ sendFRData() }, 200);
 
+// read spin data joystick and send data to flask app on 200 ms interval
 var Joy2 = new JoyStick('joy2');
 var spinURL = "http://localhost:5000/spinJoyPost"
 var spinData = {

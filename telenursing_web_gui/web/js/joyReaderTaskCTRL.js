@@ -4,6 +4,7 @@
  * Since: January 26th, 2021
  */
 
+// read XY data joystick and send data to flask app on 200 ms interval
 var Joy3 = new JoyStick('joy3');
 var xyURL = "http://localhost:5000/xyJoyPost";
 var xyData = {
@@ -26,6 +27,7 @@ setInterval(function(){ xyData.x = Joy3.GetX(); }, 50);
 setInterval(function(){ xyData.y = Joy3.GetY(); }, 50);
 setInterval(function(){ sendXYData() }, 200);
 
+// read Z data joystick and send data to flask app on 200 ms interval
 var Joy4 = new JoyStick('joy4');
 var zURL = "http://localhost:5000/zJoyPost"
 var zData = {
@@ -46,6 +48,7 @@ function sendZData()
 setInterval(function(){ zData.z=Joy4.GetY(); }, 50);
 setInterval(function(){ sendZData() }, 200);
 
+// read Pitch and Yaw data joystick and send data to flask app on 200 ms interval
 var Joy5 = new JoyStick('joy5');
 var pitchYawURL = "http://localhost:5000/yawPitchJoyPost"
 var pitchYawData = {
@@ -68,6 +71,7 @@ setInterval(function(){ pitchYawData.yaw = Joy5.GetY(); }, 50);
 setInterval(function(){ pitchYawData.pitch = Joy5.GetX(); }, 50);
 setInterval(function(){ sendPitchYawData() }, 200);
 
+// read roll data joystick and send data to flask app on 200 ms interval
 var Joy6 = new JoyStick('joy6');
 var rollURL = "http://localhost:5000/rollJoyPost"
 var rollData = {

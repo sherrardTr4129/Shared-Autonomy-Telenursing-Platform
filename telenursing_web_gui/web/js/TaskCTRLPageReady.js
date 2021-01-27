@@ -4,6 +4,8 @@
  * Since: January 27th, 2021
  */
 
+// make request to flask app to let it know the task view
+// page has loaded and is active
 var readyURL = "http://localhost:5000/taskPageActive";
 $(document).ready(function() {
   $.ajax({
