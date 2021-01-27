@@ -12,6 +12,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from sensor_msgs.msg import Joy
 from std_msgs.msg import Bool
+from telenursing_web_gui.srv import changeStreamState, changeStreamStateResponse
 
 # initialize flask
 app = Flask(__name__)
@@ -30,12 +31,19 @@ x,y,z,yaw,p,r = (0, 0, 0, 0, 0, 0)
 fwdRev, spin = (0,0)
 MobilePageActive = False
 TaskPageActive = False
-primaryStreamURL = "http://localhost:8080/stream_viewer?topic=/trina2_1/right_arm_cam/color/image_raw"
+primaryStreamURL = "http://localhost:8080/stream_viewer?topic=/trina2_1/right_arm_cam/color/image_raw1111"
 secondaryStreamURL = "http://localhost:8080/stream_viewer?topic=/trina2_1/right_arm_cam/color/image_raw"
 
 @app.route("/setPrimaryStream", methods=['POST'])
 def setPrimaryStreamCB():
     """
+    This function serves as the endpoint for the setPrimaryStream API. It allows an outside requester
+    to manually change the primary and secondary video stream URLs.
+
+    params:
+        None
+    returns:
+        None
     """
     global primaryStreamURL
     global secondaryStreamURL
@@ -49,10 +57,19 @@ def setPrimaryStreamCB():
 
 @app.route("/getPrimaryStream", methods=['GET'])
 def getPrimaryStreamCB():
+    """
+    This function serves as the endpoint for the getPrimaryStream API. It returns the text
+    representation of the primary and secondary stream URLs in a JSON object to the requester.
+
+    params:
+        None
+    returns:
+        None
+    """
     global primaryStreamURL
     global secondaryStreamURL
 
-    jsonStr = jsonify({'primaryStream' : primaryStreamURL, 'secondaryStream' : secondaryStreamURL})
+    jsonStr = jsonify({"primaryStream" : primaryStreamURL, "secondaryStream" : secondaryStreamURL})
     return jsonStr
 
 @app.route("/mobilePageActive", methods=['POST'])
@@ -200,6 +217,40 @@ def rollJoyDataCB():
     r = float(rollDict['roll'])
     return "OK"
 
+def flipURLStreamStrings():
+    """
+    This function swaps the primary and secondary URL stream strings.
+
+    params:
+        None
+    returns:
+        None
+    """
+
+    global primaryStreamURL
+    global secondaryStreamURL
+
+    tempString = ""
+
+    # swap the strings
+    tempString = primaryStreamURL
+    primaryStreamURL = secondaryStreamURL
+    secondaryStreamURL = tempString
+
+def handleSwapService(req):
+    """
+    This function serves as the service handler for the URL swap ROS service. When a request
+    is made to this service, the stream URLs will be swapped
+
+    params:
+        req: The ROS service request message payload
+    returns:
+        None
+    """
+    if(req.changeState == True):
+        flipURLStreamStrings()
+    
+    return changeStreamStateResponse(req.changeState)
 
 def publishLoopThread(joyPub, mobileActivePub, taskActivePub):
     """
@@ -275,6 +326,9 @@ def main():
     joyPub = rospy.Publisher('virtualJoystick', Joy, queue_size=1)
     mobileActivePub = rospy.Publisher('mobilePageActive', Bool, queue_size=1)
     taskActivePub = rospy.Publisher('taskPageActive', Bool, queue_size=1)
+
+    # init service handlers
+    serviceHandler = rospy.Service("toggleStream", changeStreamState, handleSwapService)
 
     rospy.loginfo("node initalized...")
 

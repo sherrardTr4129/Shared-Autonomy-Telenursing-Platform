@@ -1,0 +1,3 @@
+bool changeState
+---
+bool stateChanged
