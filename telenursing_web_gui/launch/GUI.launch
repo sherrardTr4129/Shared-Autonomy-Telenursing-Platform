@@ -1,4 +1,4 @@
 <launch>
 	<node name="video_server" pkg="web_video_server" type="web_video_server" />
-	<node name="gui_backend" pkg="hri_web_gui" type="flask_to_joy.py" />
+	<node name="gui_backend" pkg="telenursing_web_gui" type="flask_to_joy.py" />
 </launch>
