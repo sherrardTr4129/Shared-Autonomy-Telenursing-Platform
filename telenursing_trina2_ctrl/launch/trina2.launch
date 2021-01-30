@@ -1,0 +1,78 @@
+<launch>
+
+    <!-- Arguments -->
+    <!-- Robot name -->
+    <arg name="robot_name" default="trina2"/>
+    <arg name="right_arm_prefix" default="right_arm_" />
+    <arg name="left_arm_prefix" default="left_arm_" />
+    <!-- Arm and gripper type -->
+    <arg name="arm" default="gen3"/>
+    <!-- Number of degrees of freedom of the arm -->
+    <arg name="dof" default="7"/> 
+    <!-- True if the arm has a Vision module -->
+    <arg name="vision" default="true"/> 
+    <arg name="gripper" default="robotiq_2f_85" />
+
+    <!-- Start the GUIs -->
+    <arg name="start_gazebo" default="true"/>
+    <arg name="gazebo_gui"   default ="true"/>
+    <!-- Rviz config -->
+    <arg name="start_rviz" default="true"/>
+    <arg name="rviz_config" value="$(find trina2_gazebo)/rviz/rviz_config.rviz" />
+
+    <!-- Gazebo parameters -->
+    <arg name="use_sim_time" default="true"/>
+    <arg name="debug" default="false" />
+    <arg name="cyclic_data_publish_rate" default="30"/> <!--Hz-->
+    <!-- use trajectory controllers and MoveIt -->
+    <arg name="use_trajectory_controller" default="true"/>
+    <arg name="paused" default="$(arg use_trajectory_controller)"/>
+
+    <!-- Gazebo environment -->
+    <env name="GAZEBO_MODEL_PATH" value="$(find hospital_gazebo)/models:${GAZEBO_MODEL_PATH}" />
+    <arg name="world_name" default="hospital_small"/>
+    <arg name="world_file" default="$(find hospital_gazebo)/worlds/$(arg world_name).world"/>
+
+    <!-- Start Gazebo -->
+    <include file="$(find gazebo_ros)/launch/empty_world.launch">
+        <arg name="gui" value="$(arg gazebo_gui)"/>
+        <arg name="use_sim_time" value="$(arg use_sim_time)"/>
+        <arg name="debug" value="$(arg debug)"/>
+        <arg name="paused" value="$(arg paused)"/> 
+        <arg name="world_name" value="$(arg world_file)"/>
+    </include>
+
+    <!-- Start RViz -->
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rviz_config)" if="$(arg start_rviz)"/> 
+
+    <!-- Map Server -->
+    <node name="map_server" pkg="map_server" type="map_server" 
+          args="$(find trina2_navigation)/maps/$(arg world_name).yaml">
+        <param name="frame_id" value="/map" />
+    </node>
+
+    <!-- Load robots -->
+    <arg name="robot_name_1" default="$(arg robot_name)_1"/>
+    <group ns="$(arg robot_name_1)">
+    
+        <include file="$(find telenursing_trina2_ctrl)/launch/trina2_single.launch" >
+            <arg name="robot_name" value="$(arg robot_name_1)"/>
+            <arg name="prefix" value="$(arg robot_name_1)/"/>
+            <arg name="right_prefix" value="$(arg robot_name_1)/$(arg right_arm_prefix)" />
+            <arg name="left_prefix" value="$(arg robot_name_1)/$(arg left_arm_prefix)" />
+            <arg name="arm" value="$(arg arm)"/>
+            <arg name="dof" value="$(arg dof)"/> 
+            <arg name="vision" value="$(arg vision)"/> 
+            <arg name="gripper" value="$(arg gripper)" />
+            <arg name="cyclic_data_publish_rate"  value="$(arg cyclic_data_publish_rate)"/>
+            
+            <arg name="x0" value="0.4"/>
+            <arg name="y0" value="-0.4"/>
+            <arg name="yaw" value="1.57"/>
+        </include>
+        <param name="amcl/initial_pose_x" value="0" />
+        <param name="amcl/initial_pose_y" value="-1" />
+        <param name="amcl/initial_pose_a" value="1.57" />
+    </group>
+
+</launch>

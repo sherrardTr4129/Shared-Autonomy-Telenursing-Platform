@@ -32,7 +32,7 @@ fwdRev, spin = (0,0)
 MobilePageActive = False
 TaskPageActive = False
 primaryStreamURL = "http://localhost:8080/stream_viewer?topic=/trina2_1/main_cam/color/image_raw"
-secondaryStreamURL = "http://localhost:8080/stream_viewer?topic=/trina2_1/right_arm_cam/color/image_raw"
+secondaryStreamURL = "http://localhost:8080/stream_viewer?topic=/trina2_1/left_arm_cam/color/image_raw"
 
 @app.route("/setPrimaryStream", methods=['POST'])
 def setPrimaryStreamCB():
