@@ -34,27 +34,6 @@ TaskPageActive = False
 primaryStreamURL = "http://localhost:8080/stream_viewer?topic=/trina2_1/main_cam/color/image_raw"
 secondaryStreamURL = "http://localhost:8080/stream_viewer?topic=/trina2_1/left_arm_cam/color/image_raw"
 
-@app.route("/setPrimaryStream", methods=['POST'])
-def setPrimaryStreamCB():
-    """
-    This function serves as the endpoint for the setPrimaryStream API. It allows an outside requester
-    to manually change the primary and secondary video stream URLs.
-
-    params:
-        None
-    returns:
-        None
-    """
-    global primaryStreamURL
-    global secondaryStreamURL
-
-    streamDict = request.get_json()
-    primaryStreamURL = str(streamDict["primaryStream"])
-    secondaryStreamURL = str(streamDict["secondaryStream"])
-
-    return "OK"
-
-
 @app.route("/getPrimaryStream", methods=['GET'])
 def getPrimaryStreamCB():
     """
