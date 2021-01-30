@@ -162,6 +162,8 @@ include_directories(
 ## in contrast to setup.py, you can choose the destination
  catkin_install_python(PROGRAMS
    src/gui_to_arm_control.py
+   src/control_right_arm.py
+   src/gui_to_base_control.py
    DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

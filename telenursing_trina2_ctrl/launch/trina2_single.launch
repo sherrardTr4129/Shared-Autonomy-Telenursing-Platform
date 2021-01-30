@@ -129,9 +129,10 @@
     </include> 
 
     <!-- Home the robot -->
+    <node name="gui_to_base_control" pkg="telenursing_trina2_ctrl" type="gui_to_base_control.py" output="screen" respawn="false"/>
     <node name="gui_to_arm_control" pkg="telenursing_trina2_ctrl" type="gui_to_arm_control.py" output="screen" respawn="false"/>
     <node name="control_right_arm" pkg="telenursing_trina2_ctrl" type="control_right_arm.py" output="screen" respawn="false"/>
-    
+ 
     <!-- TODO Driver is needed when a real Kinova robot is used-->
     <?ignore
     <!-- Start simulated Kortex Driver -->
