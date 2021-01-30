@@ -18,8 +18,8 @@ leftArmCamTopic = "/trina2_1/left_arm_cam/color/image_raw"
 headCamTopic = "/trina2_1/main_cam/color/image_raw"
 
 # create publisher objects for the republished image topics
-primaryCamRepub = "/trina2_1/primaryCameraStream/color/imag_raw"
-secondaryCamRepub = "/trina2_1/secondaryCameraStream/color/imag_raw"
+primaryCamRepub = "/trina2_1/primaryCameraStream/color/image_raw"
+secondaryCamRepub = "/trina2_1/secondaryCameraStream/color/image_raw"
 
 # topics for knowing which camera is the primary or secondary
 primaryCamTopic = "primaryCam"
@@ -153,7 +153,8 @@ def resizeAndRepubThread():
         secondaryImage = np.zeros(shape=[512, 512, 3])
 
         # just keep looping until we get images
-        if(headCamImage.all() == 0 or armCamImage.all() == 0):
+
+        if(np.sum(headCamImage) == 0 or np.sum(armCamImage) == 0):
             rospy.loginfo("still waiting on camera images...")
             continue
 
@@ -178,7 +179,7 @@ def resizeAndRepubThread():
             rospy.logerr("Invalid Option for secondaryCamString recieved!")
 
         # publish both new images
-        if(primaryImage.all() != 0 and secondaryImage.all() != 0):
+        if(np.sum(primaryImage) != 0 and np.sum(secondaryImage) != 0):
             primaryImageMessage = backBridge.cv2_to_imgmsg(primaryImage, "bgr8")
             primaryPub.publish(primaryImageMessage)
 
