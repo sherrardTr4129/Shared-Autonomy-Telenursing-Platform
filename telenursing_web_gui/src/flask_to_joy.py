@@ -11,7 +11,7 @@ import threading
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from sensor_msgs.msg import Joy
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, String
 from telenursing_web_gui.srv import changeStreamState, changeStreamStateResponse
 
 # initialize flask
@@ -25,6 +25,8 @@ global MobilePageActive
 global TaskPageActive
 global primaryStreamURL
 global secondaryStreamURL
+global primaryStreamCam
+global secondaryStreamCam
 
 # initalize globals
 x,y,z,yaw,p,r = (0, 0, 0, 0, 0, 0)
@@ -33,6 +35,8 @@ MobilePageActive = False
 TaskPageActive = False
 primaryStreamURL = "http://localhost:8080/stream_viewer?topic=/trina2_1/main_cam/color/image_raw"
 secondaryStreamURL = "http://localhost:8080/stream_viewer?topic=/trina2_1/left_arm_cam/color/image_raw"
+primaryStreamCam = "head"
+secondaryStreamCam = "leftArm"
 
 @app.route("/getPrimaryStream", methods=['GET'])
 def getPrimaryStreamCB():
@@ -208,13 +212,20 @@ def flipURLStreamStrings():
 
     global primaryStreamURL
     global secondaryStreamURL
+    global primaryStreamCam
+    global secondaryStreamCam
 
     tempString = ""
 
-    # swap the strings
+    # swap the URL strings
     tempString = primaryStreamURL
     primaryStreamURL = secondaryStreamURL
     secondaryStreamURL = tempString
+
+    # swap the cam strings
+    tempString = primaryStreamCam
+    primaryStreamCam = secondaryStreamCam
+    secondaryStreamCam = tempString
 
 def handleSwapService(req):
     """
@@ -231,7 +242,7 @@ def handleSwapService(req):
     
     return changeStreamStateResponse(req.changeState)
 
-def publishLoopThread(joyPub, mobileActivePub, taskActivePub):
+def publishLoopThread(joyPub, mobileActivePub, taskActivePub, primaryStreamPub, secondaryStreamPub):
     """
     This function will be instantiated as a thread. This thread will continually
     publish the global variables that are being updated in the above callbacks
@@ -243,6 +254,10 @@ def publishLoopThread(joyPub, mobileActivePub, taskActivePub):
                                                    mobile control page active status
         taskActivePub (std_msgs/Bool publisher): A Bool publisher object for the
                                                  task control page active status
+        primaryStreamPub (std_msgs/String publisher): A String publisher object for
+                                                      the current primary camera
+        secondayStreamPub (std_msgs/String publisher): A String publisher object for the
+                                                       current secondary camera
     returns:
         None
     """
@@ -251,6 +266,8 @@ def publishLoopThread(joyPub, mobileActivePub, taskActivePub):
     global fwdRev, spin
     global MobilePageActive
     global TaskPageActive
+    global primaryStreamCam
+    global secondaryStreamCam
 
     # initialize control variables
     zeroList = [0,0,0,0,0,0,0,0]
@@ -293,6 +310,15 @@ def publishLoopThread(joyPub, mobileActivePub, taskActivePub):
         taskActiveMessage.data = TaskPageActive
         taskActivePub.publish(taskActiveMessage)
 
+        # publish primary and secondary stream status
+        primaryStreamCamMessage = String()
+        primaryStreamCamMessage.data = primaryStreamCam
+        primaryStreamPub.publish(primaryStreamCamMessage)
+
+        secondaryStreamCamMessage = String()
+        secondaryStreamCamMessage.data = secondaryStreamCam
+        secondaryStreamPub.publish(secondaryStreamCamMessage)
+
         # update delay of 200ms to match refresh rate of 200ms
         # in joystick data recieved from webpage
         time.sleep(0.3)
@@ -305,7 +331,8 @@ def main():
     joyPub = rospy.Publisher('virtualJoystick', Joy, queue_size=1)
     mobileActivePub = rospy.Publisher('mobilePageActive', Bool, queue_size=1)
     taskActivePub = rospy.Publisher('taskPageActive', Bool, queue_size=1)
-
+    primaryCamPub = rospy.Publisher('primaryCam', String, queue_size=1)
+    secondaryCamPub = rospy.Publisher('secondaryCam', String, queue_size=1)
     # init service handlers
     serviceHandler = rospy.Service("toggleStream", changeStreamState, handleSwapService)
 
@@ -315,7 +342,7 @@ def main():
     threading.Thread(target=lambda: app.run(host="0.0.0.0", port=5000)).start()
 
     # start publishing thread
-    thread = threading.Thread(target=publishLoopThread, args=(joyPub, mobileActivePub, taskActivePub,))
+    thread = threading.Thread(target=publishLoopThread, args=(joyPub, mobileActivePub, taskActivePub, primaryCamPub, secondaryCamPub,))
     thread.start()
 
 if __name__ == "__main__":
