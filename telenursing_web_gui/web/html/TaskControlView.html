@@ -5,7 +5,6 @@
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
   <script src="../js/joy.js"></script>
   <script src="../js/TaskCTRLPageReady.js"></script>
-  <script src="../js/TaskCTRLPage_StateManager.js"></script>
 </head>
 
 <div class="navbar">
@@ -17,11 +16,11 @@
 <section class="columns">
 	<div class="column" align="center">
 		<h2>Secondary Camera View</h2>
-		<iframe id="taskPageSecondaryStream" img src="http://localhost:8080/stream_viewer?topic=/trina2_1/secondaryCameraStream/color/imag_raw" width="650" height="500"></iframe>
+		<iframe id="taskPageSecondaryStream" img src="http://localhost:8080/stream_viewer?topic=/trina2_1/secondaryCameraStream/color/image_raw" width="650" height="500"></iframe>
 	</div>
 	<div class="column" align="center">
                 <h2>Primary Camera View</h2>
-                <iframe id="taskPagePrimaryStream" img src="http://localhost:8080/stream_viewer?topic=/trina2_1/primaryCameraStream/color/imag_raw" width="850" height="625"></iframe>
+                <iframe id="taskPagePrimaryStream" img src="http://localhost:8080/stream_viewer?topic=/trina2_1/primaryCameraStream/color/image_raw" width="850" height="625"></iframe>
         </div>
 
 </section>

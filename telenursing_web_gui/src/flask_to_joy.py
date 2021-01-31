@@ -210,17 +210,10 @@ def flipURLStreamStrings():
         None
     """
 
-    global primaryStreamURL
-    global secondaryStreamURL
     global primaryStreamCam
     global secondaryStreamCam
 
     tempString = ""
-
-    # swap the URL strings
-    tempString = primaryStreamURL
-    primaryStreamURL = secondaryStreamURL
-    secondaryStreamURL = tempString
 
     # swap the cam strings
     tempString = primaryStreamCam
