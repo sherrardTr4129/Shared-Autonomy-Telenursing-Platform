@@ -19,10 +19,12 @@ from std_msgs.msg import String
 from std_srvs.srv import Empty
 from moveit_commander.conversions import pose_to_list
 from telenursing_trina2_ctrl.msg import joint_angle
+from telenursing_trina2_ctrl.srv import homeRobotLeftArmReq, homeRobotLeftArmReqResponse
 from std_msgs.msg import Float32, Float64
 from sensor_msgs.msg import Joy
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 global x,y,z, roll, pitch, yaw, ox, oy, oz, ow
+global interfaceInstance
 
 # Misc variables
 JOY_START_INDEX = 2
@@ -146,8 +148,6 @@ class ControlGui(object):
 
 
     def move_left_arm(self,angles):
-
-
         move_group1 = self.move_group1
         joint_goal1 = move_group1.get_current_joint_values()
         joint_goal1[0] = angles.left[0]
@@ -213,6 +213,42 @@ class ControlGui(object):
         move_group1.stop()
         move_group2.stop()
 
+    def home_left_arm(self):
+        # get move group
+        move_group1 = self.move_group1
+
+        # set joint goals
+        joint_goal1 = move_group1.get_current_joint_values()
+        joint_goal1[0] = -2.1
+        joint_goal1[1] = 1.57
+        joint_goal1[2] = 1.57
+        joint_goal1[3] = 1.57
+        joint_goal1[4] = 0.0
+        joint_goal1[5] = 0.0
+        joint_goal1[6] = 1.57
+
+        # move to goal
+        self.move_to_goal(move_group1, joint_goal1, 10)
+        move_group1.stop()
+
+    def home_right_arm(self):
+        # get move group
+        move_group2 = self.move_group2
+
+        # set joint goals
+        joint_goal2 = move_group2.get_current_joint_values()
+        joint_goal2[0] = -2.8
+        joint_goal2[1] = 1.57
+        joint_goal2[2] = 0.0
+        joint_goal2[3] = 1.1
+        joint_goal2[4] = 0.2
+        joint_goal2[5] = 2.015
+        joint_goal2[6] = -3.05
+
+        # move to goal
+        self.move_to_goal(move_group2, joint_goal2, 10)
+        move_group2.stop()
+
     def move_to_goal(self, move_group, joint_goal, trials):
         trial = 0
         while True:
@@ -226,7 +262,6 @@ class ControlGui(object):
             if trial > 9:
                 rospy.loginfo("Moving arm to home failed")
                 break
-
 
 def all_close(goal, actual, tolerance):
     """
@@ -251,14 +286,36 @@ def all_close(goal, actual, tolerance):
 
     return True
 
+def handle_home_left_req(req):
+    """
+    This function serves as the request handler for the homeLeftArm service call.
+
+    params:
+        req (homeRobotLeftArmReq handle): The request message payload
+    returns:
+        response (homeRobotLeftArmReqResponse object): the service call result
+    """
+    global interfaceInstance
+
+    # home arm 
+    if(req.homeLeftArm):
+        interfaceInstance.home_left_arm()
+
+    return homeRobotLeftArmReqResponse(req.homeLeftArm)
 
 def main():
+    # reference interface globally
+    global interfaceInstance
+
+    # start robot control
     try:
         # Home robot arm
-        interface = ControlGui()
-        interface.home_robot()
+        interfaceInstance = ControlGui()
+        interfaceInstance.home_robot()
+
+        # update current pose
         global x, y, z, roll, pitch, yaw, ox, oy, oz, ow
-        current_pose = interface.move_group1.get_current_pose().pose
+        current_pose = interfaceInstance.move_group1.get_current_pose().pose
         ox = current_pose.orientation.x
         oy = current_pose.orientation.y
         oz = current_pose.orientation.z
@@ -271,6 +328,9 @@ def main():
         y= current_pose.position.y
         z= current_pose.position.z
 
+        # initialize ROS service
+        serviceHandler = rospy.Service("homeLeftArmReq", homeRobotLeftArmReq, handle_home_left_req)
+        rospy.loginfo("left arm control node initialized")
 
     except rospy.ROSInterruptException:
         return

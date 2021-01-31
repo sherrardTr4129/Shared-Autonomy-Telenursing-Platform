@@ -5,6 +5,7 @@
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
   <script src="../js/joy.js"></script>
   <script src="../js/TaskCTRLPageReady.js"></script>
+  <script src="../js/homeRobotReq.js"></script>
 </head>
 
 <div class="navbar">
@@ -50,7 +51,13 @@
 		<h4>Up and down on the Joystick controls the Roll of the robot arm end-effector.</h4>
 		<div id="joy6" style="width:200px;height:200px;margin:50px"></div>
 	</div>
+</section>
 
+<section class="columns">
+	<div class="column" align="center">
+		<h2>Home Left Arm</h2>
+		<button class="block" onclick="sendHomeReq()">Home Left Arm</button>
+	</div>
 </section>
 
 <script src="../js/joyReaderTaskCTRL.js"></script>

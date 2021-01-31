@@ -13,6 +13,7 @@ from flask_cors import CORS
 from sensor_msgs.msg import Joy
 from std_msgs.msg import Bool, String
 from telenursing_web_gui.srv import changeStreamState, changeStreamStateResponse
+from telenursing_web_gui.srv import homeRobotLeftArmReq
 
 # initialize flask
 app = Flask(__name__)
@@ -37,6 +38,36 @@ primaryStreamURL = "http://localhost:8080/stream_viewer?topic=/trina2_1/primaryC
 secondaryStreamURL = "http://localhost:8080/stream_viewer?topic=/trina2_1/secondaryCameraStream/color/image_raw"
 primaryStreamCam = "head"
 secondaryStreamCam = "leftArm"
+
+# Misc variables
+homeLeftArmReq = "/trina2_1/homeLeftArmReq"
+
+@app.route("/makeRobotHomeReq", methods=['GET'])
+def makeRobotHomeReq():
+    """
+    this function makes a ROS service call to the robot arm controller
+    manager to home the arm.
+
+    params:
+        None
+    returns:
+        None
+    """
+    rospy.wait_for_service(homeLeftArmReq)
+    try:
+        # setup service client
+        serviceClient = rospy.ServiceProxy(homeLeftArmReq, homeRobotLeftArmReq)
+
+        # make service call
+        result = serviceClient(True)
+
+        if(result):
+            rospy.loginfo("left arm homed")
+        else:
+            rospy.logerr("could not home left arm!")
+
+    except rospy.ServiceException as err:
+        rospy.logerr("service call failed: %s" % err)
 
 @app.route("/getPrimaryStream", methods=['GET'])
 def getPrimaryStreamCB():
