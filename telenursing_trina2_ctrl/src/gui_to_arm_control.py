@@ -89,9 +89,9 @@ class ControlGui(object):
                 if i == 5:
                     yaw = current_pose[2] +  joy.axes[i]*.15
                 if i == 6:
-                    pitch = current_pose[1] + joy.axes[i]*.15                    
+                    pitch = current_pose[0] + joy.axes[i]*.15
                 if i == 7:
-                    roll = current_pose[0] + joy.axes[i]*.15
+                    roll = current_pose[1] + joy.axes[i]*.15
                               
         arr = quaternion_from_euler(roll,pitch,yaw)
         ox = arr[0]
