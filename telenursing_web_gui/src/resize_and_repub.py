@@ -36,8 +36,8 @@ primaryCamString = ""
 secondaryCamString = ""
 
 # misc variables
-primaryResizeFactor = 0.8
-secondaryResizeFactor = 0.4
+primarySize = (825,600)
+secondarySize = (625,475)
 
 def headImageCallback(msg):
     """
@@ -101,23 +101,17 @@ def secondayCamCallback(msg):
     global secondaryCamString
     secondaryCamString = msg.data
 
-def resizeImage(image, resizeFactor):
+def resizeImage(image, newSize):
     """
-    This function uniformally scales and image by
-    resizeFactor
+    This function uniformally scales image to newSize
 
     params:
         Image (OpenCV image): The image to resize
-        resizeFactor (float): A value between 0 and 1 to scale image by
+        newSize (int, int): x,y integer tuple to scale image to 
 
     returns:
         scaledImage (OpenCV image): the scaled image
     """
-
-    # compute new image size
-    newWidth = image.shape[1] * resizeFactor
-    newHeight = image.shape[0] * resizeFactor
-    newSize = (int(newWidth), int(newHeight))
 
     # scale image
     scaledImage = cv2.resize(image, newSize)
@@ -160,9 +154,9 @@ def resizeAndRepubThread():
 
         # get primary image
         if(primaryCamString == "head"):
-            primaryImage = resizeImage(headCamImage, primaryResizeFactor)
+            primaryImage = resizeImage(headCamImage, primarySize)
         elif(primaryCamString == "leftArm"):
-            primaryImage = resizeImage(armCamImage, primaryResizeFactor)
+            primaryImage = resizeImage(armCamImage, primarySize)
         elif(primaryCamString == ""):
             pass
         else:
@@ -170,9 +164,9 @@ def resizeAndRepubThread():
 
         # get secondary image
         if(secondaryCamString == "head"):
-            secondaryImage = resizeImage(headCamImage, secondaryResizeFactor)
+            secondaryImage = resizeImage(headCamImage, secondarySize)
         elif(secondaryCamString == "leftArm"):
-            secondaryImage = resizeImage(armCamImage, secondaryResizeFactor)
+            secondaryImage = resizeImage(armCamImage, secondarySize)
         elif(secondaryCamString == ""):
             pass
         else:
