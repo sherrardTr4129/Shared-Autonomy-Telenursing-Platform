@@ -2,7 +2,7 @@
 This software package provides both fontend and backend components of a web-based GUI. The software is currently configured to be run on the same computer as the rest of the ROS enviornment, but this could be easily changed to allow for the GUI software to be run on a seperate machine.
 
 # Dependencies
-The backend portion of the application is written in Flask, so it will need to be installed on your system if you don't already have it. This can be done by running the following in a terminal:
+The backend portion of the application is written in python and makes use of the Flask microservice framework, so it will need to be installed on your system if you don't already have it. This can be done by running the following in a terminal:
 
 ```bash
 pip install flask
