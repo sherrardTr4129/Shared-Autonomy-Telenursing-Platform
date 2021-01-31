@@ -1,4 +1,4 @@
-#Telenursing TRINA2 Control Package
+# Telenursing TRINA2 Control Package
 This package is designed to provide both eye-in-hand camera arm and mobile base control for the TRINA2 platform. This package relies on data from the web GUI package to actuate the robot itself.
 
 ## Dependencies
