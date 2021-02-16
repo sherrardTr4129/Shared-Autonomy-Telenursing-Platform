@@ -6,6 +6,7 @@ The backend portion of the application is written in python and makes use of the
 
 ```bash
 pip install flask
+pip install Flask-Cors
 ```
 
 # Usage
