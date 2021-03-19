@@ -17,9 +17,8 @@ import operator
 camArmPoseTopic = "/currentCamArmPose"
 camArmPoseGoalTopic = "/camArmPoseGoal"
 
-# uncomment appropriate image topic
-imageTopic = "/trina2_1/right_arm_cam/color/image_raw"
-# imageTopic = "/trina2_1/left_arm_cam/color/image_raw"
+# image topic
+imageTopic = "/trina2_1/secondaryCameraStream/color/image_raw"
 
 # create global Pose message
 global camArmPose
@@ -120,7 +119,7 @@ def computeSaliencyMap(img):
     # define constants
     maxVal = 255
     threshVal = 130
-    minArea = 200
+    minArea = 500
     maxArea = 50000
 
     # compute image center
@@ -141,7 +140,7 @@ def computeSaliencyMap(img):
         # threshold image
         ret, thresh = cv2.threshold(blur, threshVal, maxVal, cv2.THRESH_BINARY)
 
-        _, contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
         
         # filter detected contours
         filteredContours = []
