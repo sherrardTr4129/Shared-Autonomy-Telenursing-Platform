@@ -251,6 +251,20 @@ def flipURLStreamStrings():
     primaryStreamCam = secondaryStreamCam
     secondaryStreamCam = tempString
 
+@app.route('/swapStreams', method=['POST'])
+def swapStreamsAPI():
+    """
+    This is one of two functions that allows external software hooks 
+    to swap the primary and secondary camera streams. This function in particular
+    exposes this functionallity via the flask API. 
+
+    params:
+        None
+    returns:
+        None
+    """
+    flipURLStreamStrings()
+
 def handleSwapService(req):
     """
     This function serves as the service handler for the URL swap ROS service. When a request
