@@ -5,7 +5,7 @@
 
 import rospy
 from sensor_msgs.msg import Image
-from geometry_msgs.msg import Pose
+from geometry_msgs.msg import Vector3
 from tf.transformations import quaternion_from_euler
 from cv_bridge import CvBridge
 import cv2
@@ -13,19 +13,18 @@ import numpy as np
 import math
 import operator
 
-# declare camera arm pose topics
-camArmPoseTopic = "/currentCamArmPose"
-camArmPoseGoalTopic = "/camArmPoseGoal"
+# declare movement vector topics
+moveVecTopic = "/saliency_move_vec"
 
 # image topic
 imageTopic = "/trina2_1/secondaryCameraStream/color/image_raw"
 
-# create global Pose message
-global camArmPose
-camArmPose = Pose()
+# create global vector3 message
+global moveVec
+moveVec = Vector3
 
 # set up Pose publisher for newly computed Pose
-posePub = rospy.Publisher(camArmPoseGoalTopic, Pose)
+vecPub = rospy.Publisher(moveVecTopic, Vector3)
 
 def subLists(listA, listB):
     diffList = []
@@ -140,7 +139,7 @@ def computeSaliencyMap(img):
         # threshold image
         ret, thresh = cv2.threshold(blur, threshVal, maxVal, cv2.THRESH_BINARY)
 
-        contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        _, contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
         
         # filter detected contours
         filteredContours = []
@@ -191,13 +190,11 @@ def computeSaliencyMap(img):
 def procImage(img):
     """
     This function processes the recieved ROS image
-    and calculates an updated pose for the end-effector
+    and calculate the direction to move to maximize
+    saliency within the frame
     """
-    # reference globals so they can be used here
-    global camArmPose
-
-    # create new Pose to be used
-    goalPose = Pose()
+    # create new vector to be used
+    tempVec = Vector3()
 
     # crop image
     width = np.size(img, 1)
@@ -207,35 +204,33 @@ def procImage(img):
     # perform saliency processing
     img, direction = computeSaliencyMap(croppedImage)
 
-    # update goal pose
-    zOffset = 0
-    yOffset = 0
-    if(direction == "Up"):
-        yOffset = 0.05
-    elif(direction == "Down"):
-        yOffset = -0.05
-    elif(direction == "Left"):
-        zOffset = 0.05
-    elif(direction == "Right"):
-        zOffset = -0.05
+    # populate vector components
+    if(direction == "up"):
+        tempVec.x = 0
+        tempVec.y = 1
+        tempVec.z = 0
+    elif(direction == "down"):
+        tempVec.x = 0
+        tempVec.y = -1
+        tempVec.z = 0
+    elif(direction == "right"):
+        tempVec.x = 1
+        tempVec.y = 0
+        tempVec.z = 0
+    elif(direction == "left"):
+        tempVec.x = -1
+        tempVec.y = 0
+        tempVec.z = 0
+    else:
+        tempVec.x = 0
+        tempVec.y = 0
+        tempVec.z = 0
 
-    # y-axis is up and down
-    # z-axis is side to side
-    goalPose.position.x = camArmPose.position.x
-    goalPose.position.y = camArmPose.position.y + yOffset
-    goalPose.position.z = camArmPose.position.z + zOffset
-
-    goalPose.orientation.x = camArmPose.orientation.x
-    goalPose.orientation.y = camArmPose.orientation.y
-    goalPose.orientation.z = camArmPose.orientation.z
-    goalPose.orientation.w = camArmPose.orientation.w
-
-    rospy.loginfo(direction)
     cv2.imshow("test", img)
     cv2.waitKey(1)
 
     # return new pose
-    return goalPose
+    return tempVec
 
 def imageCallback(msg):
     """
@@ -255,23 +250,7 @@ def imageCallback(msg):
     goalPose = procImage(orig)
 
     # publish new pose
-    posePub.publish(goalPose)
-
-def updatePose(msg):
-    """
-    this function updates the global pose variable with
-    newly recieved values
-
-    params:
-        msg -> The recieved Pose message
-    returns:
-        None
-    """
-    # reference globals so they can be used here
-    global camArmPose
-
-    # unpack message data
-    camArmPose = msg
+    vecPub.publish(goalPose)
 
 def startNode():
     """
@@ -280,7 +259,6 @@ def startNode():
     rospy.init_node("saliency_to_pose")
     rospy.loginfo("saliency_to_pose node started")
 
-    rospy.Subscriber(camArmPoseTopic, Pose, updatePose)
     rospy.Subscriber(imageTopic, Image, imageCallback)
     rospy.spin()
 if __name__ == "__main__":
