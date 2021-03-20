@@ -1,12 +1,4 @@
 function swapStreams(){
-	var swapURL = 
-	$.ajax({type: 'POST',
-		url: frURL,
-		data: JSON.stringify (frData),
-		success: function(data) {  },
-		contentType: "application/json",
-		dataType: 'json'
-	});
-}
-
+	var swapURL = "http://localhost:5000/swapStreams" 
+	$.get(swapURL);
 }
