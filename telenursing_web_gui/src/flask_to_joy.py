@@ -251,7 +251,7 @@ def flipURLStreamStrings():
     primaryStreamCam = secondaryStreamCam
     secondaryStreamCam = tempString
 
-@app.route('/swapStreams', method=['POST'])
+@app.route('/swapStreams', methods=['GET'])
 def swapStreamsAPI():
     """
     This is one of two functions that allows external software hooks 
