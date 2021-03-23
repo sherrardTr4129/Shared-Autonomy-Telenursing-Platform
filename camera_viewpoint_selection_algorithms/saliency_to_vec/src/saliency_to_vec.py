@@ -205,19 +205,19 @@ def procImage(img):
     img, direction = computeSaliencyMap(croppedImage)
 
     # populate vector components
-    if(direction == "up"):
+    if(direction == "Up"):
         tempVec.x = 0
         tempVec.y = 1
         tempVec.z = 0
-    elif(direction == "down"):
+    elif(direction == "Down"):
         tempVec.x = 0
         tempVec.y = -1
         tempVec.z = 0
-    elif(direction == "right"):
+    elif(direction == "Right"):
         tempVec.x = 1
         tempVec.y = 0
         tempVec.z = 0
-    elif(direction == "left"):
+    elif(direction == "Left"):
         tempVec.x = -1
         tempVec.y = 0
         tempVec.z = 0
@@ -229,7 +229,7 @@ def procImage(img):
     cv2.imshow("test", img)
     cv2.waitKey(1)
 
-    # return new pose
+    # return new vector
     return tempVec
 
 def imageCallback(msg):
@@ -247,10 +247,10 @@ def imageCallback(msg):
     orig = bridge.imgmsg_to_cv2(msg, "bgr8")
 
     # process image
-    goalPose = procImage(orig)
+    movementVec = procImage(orig)
 
     # publish new pose
-    vecPub.publish(goalPose)
+    vecPub.publish(movementVec)
 
 def startNode():
     """
