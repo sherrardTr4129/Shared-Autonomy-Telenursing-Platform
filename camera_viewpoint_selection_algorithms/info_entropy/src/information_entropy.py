@@ -9,7 +9,9 @@ from geometry_msgs.msg import Vector3
 import cv2
 import numpy as np
 import math
-
+from stl import mesh
+import rospkg
+import os
 
 class InfoEntropy:
     # TODO
@@ -18,11 +20,11 @@ class InfoEntropy:
     #   for each face, calculate entropy
 
     def __init__(self):
-
+        self.get_gazebo_obj()
 
         return
 
-    def get_gazebo_obj(self, objID):
+    def get_gazebo_obj(self):
         """
         Get the gazebo object from the given id
 
@@ -32,6 +34,15 @@ class InfoEntropy:
             Mesh object -> gazebo object mesh
 
         """
+        rospack = rospkg.RosPack()
+        pkgpath = rospack.get_path('info_entropy')
+        stlpath = os.path.join(pkgpath, 'urdfs', 'cube.STL')
+        print(stlpath)
+
+        cube_mesh = mesh.Mesh.from_file(stlpath)
+
+        print(cube_mesh.v0)
+
 
         return
 
