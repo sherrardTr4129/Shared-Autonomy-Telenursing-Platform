@@ -13,6 +13,7 @@ from stl import mesh
 import rospkg
 import os
 
+
 class InfoEntropy:
     # TODO
     #   import gazebo object mesh
@@ -20,11 +21,11 @@ class InfoEntropy:
     #   for each face, calculate entropy
 
     def __init__(self):
-        self.get_gazebo_obj()
-
+        self.get_obj()
+        self.cube
         return
 
-    def get_gazebo_obj(self):
+    def get_obj(self):
         """
         Get the gazebo object from the given id
 
@@ -37,14 +38,13 @@ class InfoEntropy:
         rospack = rospkg.RosPack()
         pkgpath = rospack.get_path('info_entropy')
         stlpath = os.path.join(pkgpath, 'urdfs', 'cube.STL')
-        print(stlpath)
 
         cube_mesh = mesh.Mesh.from_file(stlpath)
+        print(cube_mesh.normals)
 
-        print(cube_mesh.v0)
+        self.cube = cube_mesh
 
-
-        return
+        return cube_mesh
 
     def get_visible_faces(self, obj, camera_view):
         """
@@ -53,6 +53,11 @@ class InfoEntropy:
         params:
             obj -> gazebo object
         """
+        normals = self.cube.normals
+
+
+
+
 
 if __name__ == "__main__":
     try:
