@@ -68,8 +68,6 @@ def proc_laserscan(msg):
             last_point_bump = False
             num_consecutive_bumps = 0
             total_angle_accum = 0
-        
-
 
 def main():
     # init node
