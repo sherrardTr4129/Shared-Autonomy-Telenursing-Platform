@@ -3,6 +3,8 @@ This package uses data from the TRINA2 lidar sensor to attempt to identify bump 
 
 ![Detected Bump Angle](https://github.com/sherrardTr4129/Shared-Autonomy-Telenursing-Platform/blob/main/docs/pictures/robotAngle.png)
 
+Note that the threshold distance and the minimum number of consecutive bump points may need to be tweaked as needed when integrating this node into the larger system. Please feel free to do so at your own discretion. 
+
 ## Subscribed Topics
 This node will attempt to subscribe to a LaserScan topic with the name "/trina2\_1/base\_scan". Please make sure this topic is active before starting this node.
 
