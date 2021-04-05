@@ -58,7 +58,7 @@ class InfoEntropy:
             self.camera_pub.publish(camera)
 
             normPoses = self.get_visible_faces()
-            # self.get_cam_facing(camera, normPoses)
+            self.get_cam_facing(camera, normPoses, math.pi/2)
             rate.sleep()
         return
 
@@ -147,21 +147,30 @@ class InfoEntropy:
         # self.verts_pub.publish(verts)
         return normPoses
 
-    def get_cam_facing(self, camera_view, normPoses):
+    def get_cam_facing(self, camera_view, normPoses, camera_ang):
         """
 
         params:
-            camera_view -> (Pose)
+            camera_view -> [Pose]
+            normPoses -> [PoseArray] Poses of each face normal
+            camera_ang -> (rad) angle of view of camera
         """
         facingPoses = PoseArray()
         facingPoses.header.frame_id = '/map'
 
         # iterate through each pose and keep those that are facing camera
         for npose in normPoses.poses:
-            pdiff = self.posesubtract(camera_view.pose, npose)
 
-            dot = self.quatdot(pdiff.orientation, camera_view.pose.orientation)
-            if dot < 0:
+            pdiff = self.posesubtract(camera_view.pose, npose)
+            pdiff_dir = self.dir_to_quaternion([pdiff.position.x, pdiff.position.y, pdiff.position.z])
+
+            # check if the point is within the focal range of the camera
+            alpha = math.acos(self.quatdot(camera_view.pose.orientation, pdiff_dir))
+            if -camera_ang > alpha > camera_ang:
+                continue
+
+            # check if normal is facing the camera
+            if self.quatdot(npose.orientation, camera_view.pose.orientation) < 0:
                 facingPoses.poses.append(npose)
 
         self.facing_norms_pub.publish(facingPoses)
@@ -211,6 +220,42 @@ class InfoEntropy:
         computers dot product of 2 quaternions
         """
         return q1.x * q2.x + q1.y * q2.y + q1.z * q2.z + q1.w * q2.w
+
+    def normalize_pose(self, p):
+        """
+        normalizes the position of a pose
+        args:
+            p -> (Pose)
+        returns:
+            np -> (Pose)
+        """
+        np = Pose()
+        psize = math.sqrt(p.position.x**2 + p.position.y**2 + p.position.z**2)
+
+        np.position.x = p.position.x / psize
+        np.position.y = p.position.y / psize
+        np.position.z = p.position.z / psize
+
+        return np
+
+    def dir_to_quaternion(self, dir):
+        """
+        converts a direction in 3D space to euler angles to quaternion
+        args:
+            dir -> [3x1] vector in 3D space of direction
+        returns:
+            q -> (Quaternion)
+        """
+        x = dir[0]
+        y = dir[1]
+        z = dir[2]
+
+        roll = 0
+        pitch = math.atan2(-z, y)
+        yaw = math.atan2(y, x)
+        q = tf_conversions.transformations.quaternion_from_euler(roll, pitch, yaw, axes='rxyz')
+        return Quaternion(q[0], q[1], q[2], q[3])
+
 
 
 
