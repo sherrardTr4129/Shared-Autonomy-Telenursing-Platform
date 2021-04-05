@@ -5,7 +5,8 @@
 
 import rospy
 from sensor_msgs.msg import Image
-from geometry_msgs.msg import Vector3, PoseArray, PoseStamped, Pose
+from geometry_msgs.msg import Vector3, PoseArray, PoseStamped, Pose, TransformStamped, Vector3Stamped, Quaternion, PointStamped
+from sensor_msgs.msg import PointCloud
 import geometry_msgs.msg
 import cv2
 import numpy as np
@@ -29,11 +30,12 @@ class InfoEntropy:
         # attributes
         self.cube = None
         self.cog = None
-        self.normals_pose = None
+        self.obj_trans = None
+        self.obj_rot = None
 
         camera = PoseStamped()
         camera.header.frame_id = '/map'
-        camera.pose.position.z = 1
+        camera.pose.position.z = .5
         camera.pose.orientation.x = 1
         camera.pose.orientation.w = 0
 
@@ -42,23 +44,21 @@ class InfoEntropy:
         self.facing_norms_pub = rospy.Publisher('facing_norms', PoseArray, queue_size=10)
         self.camera_pub = rospy.Publisher('cam', PoseStamped, queue_size=10)
 
-        listener = tf.TransformListener()
+        self.verts_pub = rospy.Publisher('verts', PointCloud, queue_size=10)
 
-        try:
-            (trans, rot) = listener.lookupTransform('/map', '/box', rospy.Time(0))
-            print(trans)
-            self.obj_trans = trans
-            self.obj_rot = rot
-        except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-            pass
+        # wait for listener for transformation to object
+        self.listener = tf.TransformListener()
+        self.listener.waitForTransform("map", "box", rospy.Time(0), rospy.Duration(3))
 
         # start
         self.get_obj()
         rate = rospy.Rate(10)
-        self.camera_pub.publish(camera)
 
         while not rospy.is_shutdown():
-            self.get_visible_faces()
+            self.camera_pub.publish(camera)
+
+            normPoses = self.get_visible_faces()
+            # self.get_cam_facing(camera, normPoses)
             rate.sleep()
         return
 
@@ -74,14 +74,13 @@ class InfoEntropy:
         """
         rospack = rospkg.RosPack()
         pkgpath = rospack.get_path('info_entropy')
-        stlpath = os.path.join(pkgpath, 'urdfs', 'cube.STL')
+        stlpath = os.path.join(pkgpath, 'urdfs', 'box.STL')
 
         cube_mesh = mesh.Mesh.from_file(stlpath)
 
         self.cube = cube_mesh
-        volume, cog, inertia = cube_mesh.get_mass_properties()
-        self.cog = cog
-        print(self.cube.normals)
+        # volume, cog, inertia = cube_mesh.get_mass_properties()
+        # self.cog = cog
 
         return cube_mesh
 
@@ -96,10 +95,12 @@ class InfoEntropy:
         v0_list = self.cube.v0
         v1_list = self.cube.v1
         v2_list = self.cube.v2
-
         # init the pose array to populate
         normPoses = PoseArray()
         normPoses.header.frame_id = '/map'
+
+        verts = PointCloud()
+        verts.header.frame_id = '/map'
 
         for i in range(len(normals)):
             # normalize the normal vector
@@ -113,8 +114,7 @@ class InfoEntropy:
             yaw = math.atan2(y, x)
             pitch = math.atan2(-z, y)
             roll = 0
-            q = tf_conversions.transformations.quaternion_from_euler(roll, pitch, yaw)
-
+            q = tf_conversions.transformations.quaternion_from_euler(roll, pitch, yaw, axes='rxyz')
             # fill in the orientation information
             p = Pose()
             p.orientation.x = q[0]
@@ -126,26 +126,91 @@ class InfoEntropy:
             p.position.x = (v0[0] + v1[0] + v2[0])/300
             p.position.y = (v0[1] + v1[1] + v2[1])/300
             p.position.z = (v0[2] + v1[2] + v2[2])/300
+            # make a poseStamped for transform
+            ps = PoseStamped()
+            ps.pose = p
+            ps.header.frame_id = '/box'
+            trans_p = self.listener.transformPose('/map', ps)
 
-            normPoses.poses.append(p)
+            # print center of faces in a point cloud
+            centers = PointStamped()
+            centers.header.frame_id = '/box'
+            centers.point.x = p.position.x
+            centers.point.y = p.position.y
+            centers.point.z = p.position.z
+            trans_center = self.listener.transformPoint('/map', centers)
 
-        self.normals_pose = normPoses
+            # add transformed pose to the list of faces
+            normPoses.poses.append(trans_p.pose)
+
         self.normals_pub.publish(normPoses)
+        # self.verts_pub.publish(verts)
+        return normPoses
 
-    def get_cam_facing(self, camera_view):
+    def get_cam_facing(self, camera_view, normPoses):
         """
 
         params:
             camera_view -> (Pose)
         """
-
-        origin = np.array([camera_view.pose.position.x, camera_view.pose.position.y, camera_view.pose.position.z])
+        facingPoses = PoseArray()
+        facingPoses.header.frame_id = '/map'
 
         # iterate through each pose and keep those that are facing camera
-        for pose in self.normals_pose.poses:
-            pass
+        for npose in normPoses.poses:
+            pdiff = self.posesubtract(camera_view.pose, npose)
 
+            dot = self.quatdot(pdiff.orientation, camera_view.pose.orientation)
+            if dot < 0:
+                facingPoses.poses.append(npose)
 
+        self.facing_norms_pub.publish(facingPoses)
+
+# -------------------------- HELPERS -------------------
+
+    def posesubtract(self, p1, p2):
+        """
+        computer P = p1 - p2
+
+        params:
+            p1 -> Pose()
+            p2 -> Pose()
+        returns:
+            P -> Pose()
+        """
+
+        P = Pose()
+        # difference in position
+        P.position.x = p1.position.x - p2.position.x
+        P.position.y = p1.position.y - p2.position.y
+        P.position.z = p1.position.z - p2.position.z
+
+        # difference in orientation
+
+        # invert p2 orientation by negating w
+        qinv = [0]*4
+        qinv[0] = p2.orientation.x
+        qinv[1] = p2.orientation.y
+        qinv[2] = p2.orientation.z
+        qinv[3] = -p2.orientation.w
+
+        q1 = [0] * 4
+        q1[0] = p1.orientation.x
+        q1[1] = p1.orientation.y
+        q1[2] = p1.orientation.z
+        q1[3] = p1.orientation.w
+
+        qr = tf_conversions.transformations.quaternion_multiply(qinv, q1)
+
+        P.orientation = Quaternion(qr[0], qr[1], qr[2], qr[3])
+
+        return P
+
+    def quatdot(self, q1, q2):
+        """
+        computers dot product of 2 quaternions
+        """
+        return q1.x * q2.x + q1.y * q2.y + q1.z * q2.z + q1.w * q2.w
 
 
 
