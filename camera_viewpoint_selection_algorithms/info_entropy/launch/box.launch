@@ -1,7 +1,7 @@
 <launch>
     <!-- Start Gazebo -->
     <include file="$(find gazebo_ros)/launch/empty_world.launch">
-        <arg name="gui" value="true" />
+        <arg name="gui" value="false" />
     </include>
      <node name="spawn_box" pkg="gazebo_ros" type="spawn_model" args="-file $(find info_entropy)/urdfs/box.urdf -urdf -x 0.75 -model box" />
 

@@ -8,6 +8,7 @@ from sensor_msgs.msg import Image
 from geometry_msgs.msg import Vector3, PoseArray, PoseStamped, Pose, TransformStamped, Vector3Stamped, Quaternion, PointStamped
 from sensor_msgs.msg import PointCloud
 import geometry_msgs.msg
+from std_msgs.msg import Float32
 import cv2
 import numpy as np
 import math
@@ -16,6 +17,7 @@ import rospkg
 import os
 import tf
 import tf_conversions
+from tf.transformations import quaternion_matrix
 
 
 class InfoEntropy:
@@ -32,12 +34,24 @@ class InfoEntropy:
         self.cog = None
         self.obj_trans = None
         self.obj_rot = None
+        self.numFaces = None
 
+        # camera properties
         camera = PoseStamped()
         camera.header.frame_id = '/map'
         camera.pose.position.z = .5
-        camera.pose.orientation.x = 1
-        camera.pose.orientation.w = 0
+        camera.pose.orientation.w = 1
+
+        camR = quaternion_matrix([camera.pose.orientation.x, camera.pose.orientation.y, camera.pose.orientation.z, camera.pose.orientation.w])
+        self.rvec, _ = cv2.Rodrigues(np.asarray(camR))
+        self.tvec = [camera.pose.position.x, camera.pose.position.y, camera.pose.position.z]
+
+        self.camera_matrix = [[619.55, 0, 429.5], [0, 619.55, 360.5], [0, 0, 1]]
+        self.projection_M = [[619.55, 0, 429.5, 0], [0, 619.55, 360.5, 0], [0, 0, 1, 0]]
+
+        self.screen_area = (2*619.55)**2
+
+
 
         # publishers
         self.normals_pub = rospy.Publisher('norms', PoseArray, queue_size=10)
@@ -45,6 +59,8 @@ class InfoEntropy:
         self.camera_pub = rospy.Publisher('cam', PoseStamped, queue_size=10)
 
         self.verts_pub = rospy.Publisher('verts', PointCloud, queue_size=10)
+
+        self.entropy_pub = rospy.Publisher('entropy', Float32, queue_size=10)
 
         # wait for listener for transformation to object
         self.listener = tf.TransformListener()
@@ -58,7 +74,9 @@ class InfoEntropy:
             self.camera_pub.publish(camera)
 
             normPoses = self.get_visible_faces()
-            self.get_cam_facing(camera, normPoses, math.pi/2)
+            facingPoses, facingIndex = self.get_cam_facing(camera, normPoses, math.pi/2)
+
+            entropy = self.calc_entropy(facingIndex)
             rate.sleep()
         return
 
@@ -67,7 +85,7 @@ class InfoEntropy:
         Get the gazebo object from the given id
 
         params:
-            objID -> (String) name of the gazebo object
+            objID -> [String] name of the gazebo object
         returns:
             Mesh object -> gazebo object mesh
 
@@ -79,6 +97,7 @@ class InfoEntropy:
         cube_mesh = mesh.Mesh.from_file(stlpath)
 
         self.cube = cube_mesh
+        self.numFaces = np.shape(cube_mesh.normals)[0]
         # volume, cog, inertia = cube_mesh.get_mass_properties()
         # self.cog = cog
 
@@ -158,7 +177,10 @@ class InfoEntropy:
         facingPoses = PoseArray()
         facingPoses.header.frame_id = '/map'
 
+        facing_index = np.zeros(self.numFaces)  # keep tabs of which face is seen
+
         # iterate through each pose and keep those that are facing camera
+        f = 0
         for npose in normPoses.poses:
 
             pdiff = self.posesubtract(camera_view.pose, npose)
@@ -172,8 +194,68 @@ class InfoEntropy:
             # check if normal is facing the camera
             if self.quatdot(npose.orientation, camera_view.pose.orientation) < 0:
                 facingPoses.poses.append(npose)
+                facing_index[f] = 1     # list face as being seen
+            f += 1
 
         self.facing_norms_pub.publish(facingPoses)
+        return facingPoses, facing_index
+
+    def calc_projected_area(self, p0, p1, p2):
+        """
+        calculate the projected area from the 3D points onto the camera plane
+
+        params:
+            p0 -> [3x1] 3d coords of first point
+            p1 -> [3x1] 3d coords of second point
+            p2 -> [3x1] 3d coords of third point
+
+        returns:
+            area -> (px^2) projected area of point on to camera plane
+        """
+
+        obj_pts = np.asarray(self.transform_box2map([p0, p1, p2]))
+
+        px_points, _ = cv2.projectPoints(obj_pts, np.asarray(self.rvec), np.asarray(self.tvec), np.asarray(self.camera_matrix), np.asarray([]))
+
+        # calc area of triangle from the 3 points
+        a = px_points[0][0]
+        b = px_points[1][0]
+        c = px_points[2][0]
+        area = math.fabs(0.5 * (a[0]*(b[1] - c[1]) + b[0]*(c[1] - a[1]) + c[0]*(a[1] - b[1])))
+        return area
+
+    def calc_entropy(self, facingIndex):
+        """
+        calculate the information entropy of a given scene
+        params:
+            facingIndex -> [numFaces] bool of if each face is seen by camera
+        returns:
+            entropy -> (double) value of entropy
+        """
+
+        entropy = 0
+
+        for i in range(self.numFaces):
+
+            # skip if face is not seen by camera
+            # if not facingIndex[i]:
+            #     continue
+
+            # get the verts of the face
+            v0 = self.cube.v0[i]
+            v1 = self.cube.v1[i]
+            v2 = self.cube.v2[i]
+
+            ai = self.calc_projected_area(v0, v1, v2)
+
+            if not ai:
+                continue
+
+            ratio = ai/self.screen_area
+
+            entropy = entropy + ratio * math.log(ratio)
+        print(entropy)
+        return -entropy
 
 # -------------------------- HELPERS -------------------
 
@@ -256,6 +338,22 @@ class InfoEntropy:
         q = tf_conversions.transformations.quaternion_from_euler(roll, pitch, yaw, axes='rxyz')
         return Quaternion(q[0], q[1], q[2], q[3])
 
+    def transform_box2map(self, points):
+        """
+        transforms a list of points from the box to the map
+        """
+
+        trans_list = []
+        for b in points:
+            point = PointStamped()
+            point.header.frame_id = '/box'
+            point.point.x = b[0]
+            point.point.y = b[1]
+            point.point.z = b[2]
+
+            trans_p = self.listener.transformPoint('/map', point)
+            trans_list.append([trans_p.point.x, trans_p.point.y, trans_p.point.z])
+        return trans_list
 
 
 
