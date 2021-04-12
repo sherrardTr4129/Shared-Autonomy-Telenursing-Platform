@@ -35,6 +35,7 @@ class InfoEntropy:
         self.obj_trans = None
         self.obj_rot = None
         self.numFaces = None
+        self.box_frame = "box"
 
         # camera properties
         camera = PoseStamped()
@@ -51,20 +52,17 @@ class InfoEntropy:
 
         self.screen_area = (2*619.55)**2
 
-
-
         # publishers
         self.normals_pub = rospy.Publisher('norms', PoseArray, queue_size=10)
         self.facing_norms_pub = rospy.Publisher('facing_norms', PoseArray, queue_size=10)
         self.camera_pub = rospy.Publisher('cam', PoseStamped, queue_size=10)
+        self.new_camera_pub = rospy.Publisher('cam_array', PoseArray, queue_size=10)
 
-        self.verts_pub = rospy.Publisher('verts', PointCloud, queue_size=10)
-
-        self.entropy_pub = rospy.Publisher('entropy', Float32, queue_size=10)
+        self.entropy_vec_pub = rospy.Publisher('entropy', PoseStamped, queue_size=10)
 
         # wait for listener for transformation to object
         self.listener = tf.TransformListener()
-        self.listener.waitForTransform("map", "box", rospy.Time(0), rospy.Duration(3))
+        self.listener.waitForTransform("map", self.box_frame, rospy.Time(0), rospy.Duration(3))
 
         # start
         self.get_obj()
@@ -72,11 +70,12 @@ class InfoEntropy:
 
         while not rospy.is_shutdown():
             self.camera_pub.publish(camera)
+            self.calc_entropy_vec(camera)
 
-            normPoses = self.get_visible_faces()
-            facingPoses, facingIndex = self.get_cam_facing(camera, normPoses, math.pi/2)
-
-            entropy = self.calc_entropy(facingIndex)
+            # normPoses = self.get_visible_faces()
+            # facingPoses, facingIndex = self.get_cam_facing(camera, normPoses, math.pi/2)
+            #
+            # entropy = self.calc_entropy(facingIndex)
             rate.sleep()
         return
 
@@ -102,6 +101,73 @@ class InfoEntropy:
         # self.cog = cog
 
         return cube_mesh
+
+    def calc_entropy_vec(self, camera):
+        """
+        'move' camera through a series of points, calc entropy at each
+        generate pose that is weighted avg of each pose moved
+
+        params:
+            camera -> [PoseStamped] current pose of camera
+
+        returns:
+            entropy_vec -> [PoseStamped] weight avg of direction to move
+        """
+
+        stp = 0.5       # dist to step in each direction
+        # 7 possible positions: Current,       forward       back        left            right       up            down
+        step_list = np.asarray([[0, 0, 0], [stp, 0, 0], [-stp, 0, 0], [0, stp, 0], [0, -stp, 0], [0, 0, stp], [0, 0, -stp]])
+        num_poses = 7
+
+        cam_pose_array = []
+        entropy_vals = []
+
+        # loop through the camera positions and get entropy at each
+        for s in step_list:
+
+            # create a new camera based on values of original camera
+            new_cam = PoseStamped()
+            new_cam.header.frame_id = '/map'
+            new_cam.pose.orientation = camera.pose.orientation
+            new_cam.pose.position.x = camera.pose.position.x + s[0]
+            new_cam.pose.position.y = camera.pose.position.y + s[1]
+            new_cam.pose.position.z = camera.pose.position.z + s[2]
+            cam_pose_array.append(new_cam)
+
+            camR = quaternion_matrix([new_cam.pose.orientation.x, new_cam.pose.orientation.y, new_cam.pose.orientation.z,
+                                      new_cam.pose.orientation.w])
+            rvec, _ = cv2.Rodrigues(np.asarray(camR))
+            tvec = [new_cam.pose.position.x, new_cam.pose.position.y, new_cam.pose.position.z]
+
+
+            normPoses = self.get_visible_faces()
+            facingPoses, facingIndex = self.get_cam_facing(new_cam, normPoses, math.pi / 2)
+            entropy = self.calc_entropy(facingIndex, rvec, tvec)
+            entropy_vals.append(entropy)
+
+        nentropy = np.linalg.norm(np.asarray(entropy_vals))     # get norm of entropy values
+        entropy_vals = np.fabs(entropy_vals/nentropy)
+
+        # take weighted value of each x, y, z in camera pose
+        sum_pos = np.asarray([0.0, 0.0, 0.0])
+        for i in range(len(cam_pose_array)):
+            if math.isnan(entropy_vals[i]):
+                continue
+
+            point = cam_pose_array[i].pose.position
+            sum_pos[0] += point.x * entropy_vals[i]
+            sum_pos[1] += point.y * entropy_vals[i]
+            sum_pos[2] += point.z * entropy_vals[i]
+
+        entropy_vec = PoseStamped()
+        entropy_vec.header.frame_id = '/map'
+        entropy_vec.pose.orientation = camera.pose.orientation
+        entropy_vec.pose.position.x = sum_pos[0]/num_poses
+        entropy_vec.pose.position.y = sum_pos[1]/num_poses
+        entropy_vec.pose.position.z = sum_pos[2]/num_poses
+
+        print(entropy_vec)
+        self.entropy_vec_pub.publish(entropy_vec)
 
     def get_visible_faces(self):
         """
@@ -145,32 +211,24 @@ class InfoEntropy:
             p.position.x = (v0[0] + v1[0] + v2[0])/300
             p.position.y = (v0[1] + v1[1] + v2[1])/300
             p.position.z = (v0[2] + v1[2] + v2[2])/300
+
             # make a poseStamped for transform
             ps = PoseStamped()
             ps.pose = p
-            ps.header.frame_id = '/box'
+            ps.header.frame_id = self.box_frame
             trans_p = self.listener.transformPose('/map', ps)
-
-            # print center of faces in a point cloud
-            centers = PointStamped()
-            centers.header.frame_id = '/box'
-            centers.point.x = p.position.x
-            centers.point.y = p.position.y
-            centers.point.z = p.position.z
-            trans_center = self.listener.transformPoint('/map', centers)
 
             # add transformed pose to the list of faces
             normPoses.poses.append(trans_p.pose)
 
         self.normals_pub.publish(normPoses)
-        # self.verts_pub.publish(verts)
         return normPoses
 
     def get_cam_facing(self, camera_view, normPoses, camera_ang):
         """
 
         params:
-            camera_view -> [Pose]
+            camera_view -> [PoseStamped]
             normPoses -> [PoseArray] Poses of each face normal
             camera_ang -> (rad) angle of view of camera
         """
@@ -192,7 +250,9 @@ class InfoEntropy:
                 continue
 
             # check if normal is facing the camera
-            if self.quatdot(npose.orientation, camera_view.pose.orientation) < 0:
+            dot = self.quatdot(npose.orientation, camera_view.pose.orientation)
+            bound = 0.01
+            if math.fabs(dot) < bound:
                 facingPoses.poses.append(npose)
                 facing_index[f] = 1     # list face as being seen
             f += 1
@@ -200,7 +260,7 @@ class InfoEntropy:
         self.facing_norms_pub.publish(facingPoses)
         return facingPoses, facing_index
 
-    def calc_projected_area(self, p0, p1, p2):
+    def calc_projected_area(self, p0, p1, p2, rvec, tvec):
         """
         calculate the projected area from the 3D points onto the camera plane
 
@@ -215,7 +275,7 @@ class InfoEntropy:
 
         obj_pts = np.asarray(self.transform_box2map([p0, p1, p2]))
 
-        px_points, _ = cv2.projectPoints(obj_pts, np.asarray(self.rvec), np.asarray(self.tvec), np.asarray(self.camera_matrix), np.asarray([]))
+        px_points, _ = cv2.projectPoints(obj_pts, np.asarray(rvec), np.asarray(tvec), np.asarray(self.camera_matrix), np.asarray([]))
 
         # calc area of triangle from the 3 points
         a = px_points[0][0]
@@ -224,7 +284,7 @@ class InfoEntropy:
         area = math.fabs(0.5 * (a[0]*(b[1] - c[1]) + b[0]*(c[1] - a[1]) + c[0]*(a[1] - b[1])))
         return area
 
-    def calc_entropy(self, facingIndex):
+    def calc_entropy(self, facingIndex, rvec, tvec):
         """
         calculate the information entropy of a given scene
         params:
@@ -234,19 +294,18 @@ class InfoEntropy:
         """
 
         entropy = 0
-
         for i in range(self.numFaces):
 
             # skip if face is not seen by camera
-            # if not facingIndex[i]:
-            #     continue
+            if not facingIndex[i]:
+                continue
 
             # get the verts of the face
             v0 = self.cube.v0[i]
             v1 = self.cube.v1[i]
             v2 = self.cube.v2[i]
 
-            ai = self.calc_projected_area(v0, v1, v2)
+            ai = self.calc_projected_area(v0, v1, v2, rvec, tvec)
 
             if not ai:
                 continue
@@ -254,8 +313,8 @@ class InfoEntropy:
             ratio = ai/self.screen_area
 
             entropy = entropy + ratio * math.log(ratio)
-        print(entropy)
         return -entropy
+
 
 # -------------------------- HELPERS -------------------
 
@@ -341,17 +400,23 @@ class InfoEntropy:
     def transform_box2map(self, points):
         """
         transforms a list of points from the box to the map
+
+        params:
+            points -> [PointStamped] array of points to transform
+
+        returns:
+            trans_list ->
         """
 
         trans_list = []
         for b in points:
             point = PointStamped()
-            point.header.frame_id = '/box'
+            point.header.frame_id = self.box_frame
             point.point.x = b[0]
             point.point.y = b[1]
             point.point.z = b[2]
 
-            trans_p = self.listener.transformPoint('/map', point)
+            trans_p = self.listener.transformPoint('map', point)
             trans_list.append([trans_p.point.x, trans_p.point.y, trans_p.point.z])
         return trans_list
 
