@@ -31,29 +31,53 @@ JOY_STOP_INDEX = 8
 
 # STATE VARIABLES
 # sim starts with left arm as the secondary camera by default
-sec_cam = "leftArm" # "head" for main_cam, "leftArm" for left_arm movement
+global sec_cam
 
 # default starting positions of the head camera, keeping track of it here as 
 # it gives same info as subscribing to the controller topic (it just has setpoint not actual)
 global headcam_pitch
 global headcam_yaw
 
+global move_group1
 # move group definitions (should be unchanging)
 ## Instantiate a `RobotCommander`_ object. Provides information such as the robot's
 ## kinematic model and the robot's current joint states   
 group1_name = "left_arm"
 #group2_name = "right_arm"
-move_group1 = moveit_commander.MoveGroupCommander(group1_name)
 
 global headcam_pitch_pub
 global headcam_yaw_pub
+
+def all_close(goal, actual, tolerance):
+    """
+    Convenience method for testing if a list of values are within a tolerance of their counterparts in another list
+    @param: goal       A list of floats, a Pose or a PoseStamped
+    @param: actual     A list of floats, a Pose or a PoseStamped
+    @param: tolerance  A float
+    @returns: bool
+    """
+    all_equal = True
+    if type(goal) is list:
+        for index in range(len(goal)):
+            if (abs(actual[index] - goal[index]) > tolerance) and \
+               (abs(abs(actual[index]-goal[index])-2*pi) > tolerance) :
+                return False
+
+    elif type(goal) is geometry_msgs.msg.PoseStamped:
+        return all_close(goal.pose, actual.pose, tolerance)
+
+    elif type(goal) is geometry_msgs.msg.Pose:
+        return all_close(pose_to_list(goal), pose_to_list(actual), tolerance)
+
+    return True
 
 def startNode():
     global headcam_pitch_pub
     global headcam_yaw_pub
     global headcam_pitch
     global headcam_yaw
-
+    global sec_cam
+    global move_group1
 
     ## First initialize `moveit_commander`_ and a `rospy`_ node:
     #moveit_commander.roscpp_initialize(sys.argv)
@@ -62,16 +86,19 @@ def startNode():
     # initialize head_cam pitch and yaw positions
     headcam_pitch = 0.0
     headcam_yaw = 0.0
+    sec_cam = "leftArm" # "head" for main_cam, "leftArm" for left_arm movement
+    move_group1 = moveit_commander.MoveGroupCommander("left_arm")
 
 
     # subscribe to secondary cam topic to check which camera must be moved
-    #rospy.Subscriber("/secondaryCam", String, which_cam_callback, queue_size=1)
+    rospy.Subscriber("/secondaryCam", String, which_cam_callback, queue_size=1)
     # publish the yaw and pitch to the main head camera directly (no movegroup)
     headcam_yaw_pub = rospy.Publisher('/trina2_1/main_cam_yaw_controller/command', Float64,queue_size=1)
     headcam_pitch_pub = rospy.Publisher('/trina2_1/main_cam_pitch_controller/command', Float64, queue_size=10)
 
 
 def which_cam_callback(primary):
+    global sec_cam
     # primary = std_msgs/String
     sec_cam = primary.data
 
@@ -81,7 +108,8 @@ def vec_to_move(vector):
     global headcam_yaw_pub
     global headcam_pitch
     global headcam_yaw
-
+    global sec_cam
+    global move_group1
 
     # determine xyz of vector, change format based on datatype of "vector"
     vecX = vector[0] # currently assuming vector is a 1x3 array
@@ -90,11 +118,12 @@ def vec_to_move(vector):
 
     # since only the left arm uses a movegroup for the cameras, movegroup will always be move_group1
     move_group = move_group1
-    if (sec_cam == "left_arm"):
+    if (sec_cam == "leftArm"):
 
         #current_move_group = move_group1
         current_pose = move_group.get_current_pose().pose
-
+        print("current pose: ")
+        rospy.loginfo(current_pose)
         x = current_pose.position.x
         y = current_pose.position.y
         z = current_pose.position.z
@@ -116,8 +145,11 @@ def vec_to_move(vector):
 
         # increment the motion for the goal based on the input vector
         pose_goal.position.x = y + vecX * 0.05
-        pose_goal.position.y = x + vecY * 0.05
+        pose_goal.position.y = x + vecY * 0.05 
         pose_goal.position.z = z + vecZ * 0.05
+
+        print("pose_goal: ")
+        rospy.loginfo(pose_goal)
 
         # execute the planned motion
         move_group.set_pose_target(pose_goal)
@@ -167,10 +199,9 @@ def vec_to_move(vector):
 if __name__ == "__main__":
     global headcam_pitch_pub
     global headcam_yaw_pub
-
+    global sec_cam
     startNode()
-
-    move_vector = [1,1,1]
+    move_vector = [5,5,5]
 
     #vec_to_move([5, 5, 5])
     # rostopic pub /trina2_1/main_cam_pitch_controller/command std_msgs/Float64 20
