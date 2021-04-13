@@ -33,30 +33,43 @@ JOY_STOP_INDEX = 8
 # sim starts with left arm as the secondary camera by default
 sec_cam = "leftArm" # "head" for main_cam, "leftArm" for left_arm movement
 
+# default starting positions of the head camera, keeping track of it here as 
+# it gives same info as subscribing to the controller topic (it just has setpoint not actual)
+global headcam_pitch
+global headcam_yaw
+
 # move group definitions (should be unchanging)
 ## Instantiate a `RobotCommander`_ object. Provides information such as the robot's
 ## kinematic model and the robot's current joint states   
 group1_name = "left_arm"
-group2_name = "right_arm"
-#group3_name = "main_cam" # for head camera pitch/yaw control
-# move_group1 = moveit_commander.MoveGroupCommander(group1_name)
-# move_group2 = moveit_commander.MoveGroupCommander(group2_name)
-#move_group3 = moveit_commander.MoveGroupCommander(group3_name)
+#group2_name = "right_arm"
+move_group1 = moveit_commander.MoveGroupCommander(group1_name)
+
 global headcam_pitch_pub
 global headcam_yaw_pub
 
 def startNode():
     global headcam_pitch_pub
     global headcam_yaw_pub
+    global headcam_pitch
+    global headcam_yaw
+
+
     ## First initialize `moveit_commander`_ and a `rospy`_ node:
     #moveit_commander.roscpp_initialize(sys.argv)
     rospy.init_node('roll_reduction', anonymous=True)
 
+    # initialize head_cam pitch and yaw positions
+    headcam_pitch = 0.0
+    headcam_yaw = 0.0
+
+
     # subscribe to secondary cam topic to check which camera must be moved
     #rospy.Subscriber("/secondaryCam", String, which_cam_callback, queue_size=1)
     # publish the yaw and pitch to the main head camera directly (no movegroup)
-    headcam_yaw_pub = rospy.Publisher('/trina2_1/main_cam_yaw_controller/command', Float64 ,queue_size=1)
-    
+    headcam_yaw_pub = rospy.Publisher('/trina2_1/main_cam_yaw_controller/command', Float64,queue_size=1)
+    headcam_pitch_pub = rospy.Publisher('/trina2_1/main_cam_pitch_controller/command', Float64, queue_size=10)
+
 
 def which_cam_callback(primary):
     # primary = std_msgs/String
@@ -66,12 +79,21 @@ def which_cam_callback(primary):
 def vec_to_move(vector):
     global headcam_pitch_pub
     global headcam_yaw_pub
+    global headcam_pitch
+    global headcam_yaw
 
-    current_move_group = None
+
+    # determine xyz of vector, change format based on datatype of "vector"
+    vecX = vector[0] # currently assuming vector is a 1x3 array
+    vecY = vector[1]
+    vecZ = vector[2]
+
+    # since only the left arm uses a movegroup for the cameras, movegroup will always be move_group1
+    move_group = move_group1
     if (sec_cam == "left_arm"):
 
-        current_move_group = move_group1
-        current_pose = current_move_group.get_current_pose().pose
+        #current_move_group = move_group1
+        current_pose = move_group.get_current_pose().pose
 
         x = current_pose.position.x
         y = current_pose.position.y
@@ -84,11 +106,6 @@ def vec_to_move(vector):
         roll = r
         pitch = p
         yaw = y
-
-        # determine xyz of vector, change format based on datatype of "vector"
-        vecX = vector[0] # currently assuming vector is a 1x3 array
-        vecY = vector[1]
-        vecZ = vector[2]
 
         # maintain the same orientation to begin with
         pose_goal = geometry_msgs.msg.Pose()
@@ -118,22 +135,66 @@ def vec_to_move(vector):
         move_group.clear_pose_targets()
 
     else:
-        # head_cam move group
-        # current_move_group = move_group3
-
         # publish to "/trina2_1/main_cam_yaw_controller/command" (type Float64) for yaw control
         # publish to "/trina2_1/main_cam_pitch_controller/command" (type Float64) for pitch control
-        print("head_cam is selected, nothing happened")
+        print("head_cam is selected")
+
+        # set up the control messages (starting at current pitch and yaw)
+        pitch_msg = Float64()
+        pitch_msg.data = headcam_pitch
+        yaw_msg = Float64()
+        yaw_msg.data = headcam_yaw
+
+        # move in direction of the vector in small steps
+        if vecY > 0: 
+            yaw_msg.data += 0.1
+            headcam_yaw += 0.1
+        elif vecY < 0:
+            yaw_msg.data -= 0.1
+            headcam_yaw -= 0.1
+        if vecZ > 0:
+            pitch_msg.data += 0.1
+            headcam_pitch += 0.1
+        elif vecZ < 0:
+            pitch_msg.data -= 0.1
+            headcam_pitch -= 0.1
+
+        headcam_pitch_pub.publish(pitch_msg)
+        headcam_yaw_pub.publish(yaw_msg)
+
+
 
 if __name__ == "__main__":
-    
+    global headcam_pitch_pub
+    global headcam_yaw_pub
+
     startNode()
+
+    move_vector = [1,1,1]
+
     #vec_to_move([5, 5, 5])
     # rostopic pub /trina2_1/main_cam_pitch_controller/command std_msgs/Float64 20
-    headcam_pitch_pub = rospy.Publisher('/trina2_1/main_cam_pitch_controller/command', Float64, queue_size=10)
-    pitch_msg = Float64()
-    pitch_msg.data = 0.0
-    headcam_pitch_pub.publish(pitch_msg)
-    rospy.loginfo(pitch_msg)
-    rospy.loginfo(" we are publishing pitch")
-    rospy.spin()
+    # pitch_msg = Float64()
+    # pitch_msg.data = 0.0
+    # yaw_msg = Float64()
+    # yaw_msg.data = 0.0
+    # # headcam_pitch_pub.publish(pitch_msg)
+    # rospy.loginfo(pitch_msg)
+    # rospy.loginfo(" we are publishing pitch")
+    #rospy.spin()
+    while not rospy.is_shutdown():
+        
+        vec_to_move(move_vector)
+        
+        # if(pitch_msg.data < 60.0):
+        #     pitch_msg.data += 0.1
+        # if(yaw_msg.data < 60.0):
+        #     yaw_msg.data += 0.1
+
+        # #headcam_pitch_pub.publish(pitch_msg)
+        # headcam_yaw_pub.publish(yaw_msg)
+        # #rospy.loginfo(pitch_msg)
+        # rospy.loginfo(yaw_msg)
+        # #rospy.loginfo(" we are publishing pitch")
+        # rospy.loginfo(" we are publishing yaw")
+
