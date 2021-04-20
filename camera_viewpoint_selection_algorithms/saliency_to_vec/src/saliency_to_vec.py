@@ -5,7 +5,7 @@
 
 import rospy
 from sensor_msgs.msg import Image
-from geometry_msgs.msg import Vector3
+from geometry_msgs.msg import Vector3Stamped
 from tf.transformations import quaternion_from_euler
 from cv_bridge import CvBridge
 import cv2
@@ -19,12 +19,8 @@ moveVecTopic = "/saliency_move_vec"
 # image topic
 imageTopic = "/trina2_1/secondaryCameraStream/color/image_raw"
 
-# create global vector3 message
-global moveVec
-moveVec = Vector3
-
 # set up Pose publisher for newly computed Pose
-vecPub = rospy.Publisher(moveVecTopic, Vector3)
+vecPub = rospy.Publisher(moveVecTopic, Vector3Stamped)
 
 def subLists(listA, listB):
     diffList = []
@@ -138,8 +134,8 @@ def computeSaliencyMap(img):
 
         # threshold image
         ret, thresh = cv2.threshold(blur, threshVal, maxVal, cv2.THRESH_BINARY)
-
-        _, contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        
+        contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
         
         # filter detected contours
         filteredContours = []
@@ -194,7 +190,8 @@ def procImage(img):
     saliency within the frame
     """
     # create new vector to be used
-    tempVec = Vector3()
+    tempVec = Vector3Stamped()
+    tempVec.header.stamp = rospy.Time.now()
 
     # crop image
     width = np.size(img, 1)
@@ -206,25 +203,25 @@ def procImage(img):
 
     # populate vector components
     if(direction == "Up"):
-        tempVec.x = 0
-        tempVec.y = 1
-        tempVec.z = 0
+        tempVec.vector.x = 0
+        tempVec.vector.y = 1
+        tempVec.vector.z = 0
     elif(direction == "Down"):
-        tempVec.x = 0
-        tempVec.y = -1
-        tempVec.z = 0
+        tempVec.vector.x = 0
+        tempVec.vector.y = -1
+        tempVec.vector.z = 0
     elif(direction == "Right"):
-        tempVec.x = 1
-        tempVec.y = 0
-        tempVec.z = 0
+        tempVec.vector.x = 1
+        tempVec.vector.y = 0
+        tempVec.vector.z = 0
     elif(direction == "Left"):
-        tempVec.x = -1
-        tempVec.y = 0
-        tempVec.z = 0
+        tempVec.vector.x = -1
+        tempVec.vector.y = 0
+        tempVec.vector.z = 0
     else:
-        tempVec.x = 0
-        tempVec.y = 0
-        tempVec.z = 0
+        tempVec.vector.x = 0
+        tempVec.vector.y = 0
+        tempVec.vector.z = 0
 
     cv2.imshow("test", img)
     cv2.waitKey(1)
