@@ -131,10 +131,10 @@ def vec_to_move(vector):
         oy = current_pose.orientation.y
         oz = current_pose.orientation.z
         ow = current_pose.orientation.w
-        (r, p, y) = euler_from_quaternion([ox, oy, oz, ow])
-        roll = r
-        pitch = p
-        yaw = y
+        (rollRe, pitchRe, yawRe) = euler_from_quaternion([ox, oy, oz, ow])
+        roll = rollRe
+        pitch = pitchRe
+        yaw = yawRe
 
         # maintain the same orientation to begin with
         pose_goal = geometry_msgs.msg.Pose()
@@ -144,10 +144,12 @@ def vec_to_move(vector):
         pose_goal.orientation.z = oz
 
         # increment the motion for the goal based on the input vector
-        pose_goal.position.x = y + vecX * 0.05
-        pose_goal.position.y = x + vecY * 0.05 
-        pose_goal.position.z = z + vecZ * 0.05
-
+        movescale = 0.05 # formerly 0.05
+        # swapping of x and y reflects how it works in webgui
+        pose_goal.position.x = x + (vecX * movescale)
+        pose_goal.position.y = y + (vecY * movescale)
+        pose_goal.position.z = z + (vecZ * movescale)
+        
         print("pose_goal: ")
         rospy.loginfo(pose_goal)
 
@@ -201,7 +203,7 @@ if __name__ == "__main__":
     global headcam_yaw_pub
     global sec_cam
     startNode()
-    move_vector = [5,5,5]
+    move_vector = [5,0,0]
 
     #vec_to_move([5, 5, 5])
     # rostopic pub /trina2_1/main_cam_pitch_controller/command std_msgs/Float64 20
