@@ -9,6 +9,7 @@
 #              perform the stop-to-fixate algorithm for 
 #              the head pan-tilt camera based on the Float64 msg
 #              sent by lidar_to_bump ("/trina2_1/bump_angle")
+#              -> returns a 3D vector or PoseStamped (will see which is better)
 
 import rospy
 import math
@@ -41,6 +42,7 @@ def main():
 
     # create subscriber
     angle_sub = rospy.Subscriber("/trina2_2/bump_angle", Float64, proc_bump_angle)
+    #vec_pub = rospy.Publisher("/stop_to_fixate_vec", )
     rospy.spin()
 
 if(__name__ == "__main__"):
