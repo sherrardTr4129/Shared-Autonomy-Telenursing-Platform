@@ -37,6 +37,8 @@ class InfoEntropy:
         self.numFaces = None
         self.box_frame = "box"
 
+        self.br = tf.TransformBroadcaster()
+
         # camera properties
         camera = PoseStamped()
         camera.header.frame_id = '/map'
@@ -60,17 +62,24 @@ class InfoEntropy:
 
         self.entropy_vec_pub = rospy.Publisher('entropy', PoseStamped, queue_size=10)
 
+        # subscriber
+        rospy.Subscriber('/fused_BNO_Kinect_Pose', Pose, self.obj_pos_callback)
+
         # wait for listener for transformation to object
         self.listener = tf.TransformListener()
-        self.listener.waitForTransform("map", self.box_frame, rospy.Time(0), rospy.Duration(3))
+        # try:
+        #     self.listener.waitForTransform("map", self.box_frame, rospy.Time(0), rospy.Duration(3))
+        # except:
+        #     pass
 
         # start
         self.get_obj()
         rate = rospy.Rate(10)
 
         while not rospy.is_shutdown():
-            self.camera_pub.publish(camera)
-            self.calc_entropy_vec(camera)
+
+            # self.camera_pub.publish(camera)
+            # self.calc_entropy_vec(camera)
 
             # normPoses = self.get_visible_faces()
             # facingPoses, facingIndex = self.get_cam_facing(camera, normPoses, math.pi/2)
@@ -78,6 +87,12 @@ class InfoEntropy:
             # entropy = self.calc_entropy(facingIndex)
             rate.sleep()
         return
+
+    def obj_pos_callback(self, msg):
+        q = [msg.orientation.x, msg.orientation.y, msg.orientation.z, msg.orientation.w]
+
+        self.br.sendTransform((msg.position.x, msg.position.y, msg.position.z),
+                              q, rospy.Time.now(), '/box', '/map')
 
     def get_obj(self):
         """
@@ -166,7 +181,7 @@ class InfoEntropy:
         entropy_vec.pose.position.y = sum_pos[1]/num_poses
         entropy_vec.pose.position.z = sum_pos[2]/num_poses
 
-        print(entropy_vec)
+        # print(entropy_vec)
         self.entropy_vec_pub.publish(entropy_vec)
 
     def get_visible_faces(self):

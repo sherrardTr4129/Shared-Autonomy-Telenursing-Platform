@@ -3,7 +3,7 @@
     <include file="$(find gazebo_ros)/launch/empty_world.launch">
         <arg name="gui" value="false" />
     </include>
-     <node name="spawn_box" pkg="gazebo_ros" type="spawn_model" args="-file $(find info_entropy)/urdfs/box.urdf -urdf -x 0.75 -model box" />
+     <node name="spawn_box" pkg="gazebo_ros" type="spawn_model" args="-file $(find info_entropy)/urdfs/box.urdf -urdf -x 1.25 -model box_bag" />
 
      <param name="robot_description" command="$(find xacro)/xacro.py '$(find info_entropy)/urdfs/box.urdf'"/>
 
@@ -15,7 +15,7 @@
       <!-- Combine joint values -->
       <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/>
 
-       <node pkg="tf" type="static_transform_publisher" name="model_broadcaster" args=" .75 0 0 0 0 0 /map /box 100" />
+<!--        <node pkg="tf" type="static_transform_publisher" name="model_broadcaster" args=" 1.25 0 0 0 0 0 /map /box 100" /> -->
 
        <node type="rviz" name="rviz" pkg="rviz" args="-d $(find info_entropy)/rviz/basic.rviz" />
 </launch>
