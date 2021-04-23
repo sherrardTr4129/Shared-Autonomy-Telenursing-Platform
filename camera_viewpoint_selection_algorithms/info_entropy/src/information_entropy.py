@@ -29,21 +29,29 @@ class InfoEntropy:
     def __init__(self):
         rospy.init_node('info_entropy', anonymous=True)
 
-        # attributes
+        # attributes  ---------------------
         self.cube = None
         self.cog = None
         self.obj_trans = None
         self.obj_rot = None
         self.numFaces = None
-        self.box_frame = "box"
+        self.box_frame = "/box"
+        self.bag_scale = 2
 
         self.br = tf.TransformBroadcaster()
 
-        # camera properties
+        # camera properties  ---------------------
         camera = PoseStamped()
         camera.header.frame_id = '/map'
-        camera.pose.position.z = .5
-        camera.pose.orientation.w = 1
+        camera.pose.position.z = 1.5
+        camera.pose.position.y = .25
+        camera.pose.position.x = 0
+
+        camq = tf_conversions.transformations.quaternion_from_euler(0, .1, 0, axes='rxyz')
+        camera.pose.orientation.x = camq[0]
+        camera.pose.orientation.y = camq[1]
+        camera.pose.orientation.z = camq[2]
+        camera.pose.orientation.w = camq[3]
 
         camR = quaternion_matrix([camera.pose.orientation.x, camera.pose.orientation.y, camera.pose.orientation.z, camera.pose.orientation.w])
         self.rvec, _ = cv2.Rodrigues(np.asarray(camR))
@@ -54,11 +62,24 @@ class InfoEntropy:
 
         self.screen_area = (2*619.55)**2
 
-        # publishers
+        camera2 = PoseStamped()
+        camera2.header.frame_id = '/map'
+        camera2.pose.position.z = 0
+        camera2.pose.position.x = 0
+        camera2.pose.orientation.w = 1
+
+        camR2 = quaternion_matrix([camera2.pose.orientation.x, camera2.pose.orientation.y, camera2.pose.orientation.z,
+                                  camera2.pose.orientation.w])
+        self.rvec2, _ = cv2.Rodrigues(np.asarray(camR2))
+        self.tvec2 = [camera2.pose.position.x, camera2.pose.position.y, camera2.pose.position.z]
+
+        # publishers ---------------------
         self.normals_pub = rospy.Publisher('norms', PoseArray, queue_size=10)
         self.facing_norms_pub = rospy.Publisher('facing_norms', PoseArray, queue_size=10)
         self.camera_pub = rospy.Publisher('cam', PoseStamped, queue_size=10)
         self.new_camera_pub = rospy.Publisher('cam_array', PoseArray, queue_size=10)
+
+        self.norm2cam = rospy.Publisher('n2c', PoseArray, queue_size=10)
 
         self.entropy_vec_pub = rospy.Publisher('entropy', PoseStamped, queue_size=10)
 
@@ -68,31 +89,35 @@ class InfoEntropy:
         # wait for listener for transformation to object
         self.listener = tf.TransformListener()
         # try:
-        #     self.listener.waitForTransform("map", self.box_frame, rospy.Time(0), rospy.Duration(3))
+        self.listener.waitForTransform("map", self.box_frame, rospy.Time(0), rospy.Duration(5))
         # except:
         #     pass
 
         # start
         self.get_obj()
+
         rate = rospy.Rate(10)
 
         while not rospy.is_shutdown():
+            self.camera_pub.publish(camera)
+            self.normPoses = self.get_visible_faces()
+            print('start----------------------------')
 
-            # self.camera_pub.publish(camera)
             # self.calc_entropy_vec(camera)
 
-            # normPoses = self.get_visible_faces()
-            # facingPoses, facingIndex = self.get_cam_facing(camera, normPoses, math.pi/2)
-            #
-            # entropy = self.calc_entropy(facingIndex)
+            # print('start')
+            facingPoses, facingIndex = self.get_cam_facing(camera, self.normPoses, math.pi/2)
+            entropy = self.calc_entropy(facingIndex, self.rvec, self.tvec)
+            print(entropy, facingIndex)
+
             rate.sleep()
         return
 
     def obj_pos_callback(self, msg):
         q = [msg.orientation.x, msg.orientation.y, msg.orientation.z, msg.orientation.w]
 
-        self.br.sendTransform((msg.position.x, msg.position.y, msg.position.z),
-                              q, rospy.Time.now(), '/box', '/map')
+        self.br.sendTransform((msg.position.x/self.bag_scale, msg.position.y/self.bag_scale, msg.position.z/self.bag_scale),
+                              q, rospy.Time.now(), self.box_frame, '/map')
 
     def get_obj(self):
         """
@@ -129,7 +154,7 @@ class InfoEntropy:
             entropy_vec -> [PoseStamped] weight avg of direction to move
         """
 
-        stp = 0.5       # dist to step in each direction
+        stp = 1.0      # dist to step in each direction
         # 7 possible positions: Current,       forward       back        left            right       up            down
         step_list = np.asarray([[0, 0, 0], [stp, 0, 0], [-stp, 0, 0], [0, stp, 0], [0, -stp, 0], [0, 0, stp], [0, 0, -stp]])
         num_poses = 7
@@ -137,6 +162,7 @@ class InfoEntropy:
         cam_pose_array = []
         entropy_vals = []
 
+        print('start')
         # loop through the camera positions and get entropy at each
         for s in step_list:
 
@@ -154,14 +180,14 @@ class InfoEntropy:
             rvec, _ = cv2.Rodrigues(np.asarray(camR))
             tvec = [new_cam.pose.position.x, new_cam.pose.position.y, new_cam.pose.position.z]
 
-
-            normPoses = self.get_visible_faces()
-            facingPoses, facingIndex = self.get_cam_facing(new_cam, normPoses, math.pi / 2)
+            facingPoses, facingIndex = self.get_cam_facing(new_cam, self.normPoses, math.pi)
             entropy = self.calc_entropy(facingIndex, rvec, tvec)
+            print(s, facingIndex, entropy)
             entropy_vals.append(entropy)
 
         nentropy = np.linalg.norm(np.asarray(entropy_vals))     # get norm of entropy values
-        entropy_vals = np.fabs(entropy_vals/nentropy)
+        if nentropy == 0.0:
+            return PoseStamped()
 
         # take weighted value of each x, y, z in camera pose
         sum_pos = np.asarray([0.0, 0.0, 0.0])
@@ -186,7 +212,7 @@ class InfoEntropy:
 
     def get_visible_faces(self):
         """
-        Get normals of each face of gazebo object and faces visible by camera
+        Get normals of each face of gazebo object
 
         """
 
@@ -202,6 +228,7 @@ class InfoEntropy:
         verts = PointCloud()
         verts.header.frame_id = '/map'
 
+        # for i in range(len(normals)):
         for i in range(len(normals)):
             # normalize the normal vector
             n = normals[i] / np.linalg.norm(normals[i])
@@ -210,10 +237,16 @@ class InfoEntropy:
             v1 = v1_list[i]
             v2 = v2_list[i]
 
+            if x == 0:
+                x = 0.0
+            if y == 0:
+                y = 0.0
+            if z == 0:
+                z = 0.0
+
             # create euler angles from the vector direction
-            yaw = math.atan2(y, x)
-            pitch = math.atan2(-z, y)
-            roll = 0
+            roll, pitch, yaw = self.dir_to_euler(x, y, z)
+
             q = tf_conversions.transformations.quaternion_from_euler(roll, pitch, yaw, axes='rxyz')
             # fill in the orientation information
             p = Pose()
@@ -239,6 +272,25 @@ class InfoEntropy:
         self.normals_pub.publish(normPoses)
         return normPoses
 
+    def transform_normals(self):
+        ''' transform points of normals into current box orientation
+        '''
+
+        tnormals = []
+        for n in self.cube.normals:
+
+            n = n / np.linalg.norm(n)
+            npoint = PointStamped()
+            npoint.header.frame_id = self.box_frame
+            npoint.point.x = n[0]
+            npoint.point.y = n[1]
+            npoint.point.z = n[2]
+
+            tn = self.listener.transformPoint('/map', npoint)
+            tnormals.append(tn)
+        return tnormals
+
+
     def get_cam_facing(self, camera_view, normPoses, camera_ang):
         """
 
@@ -248,31 +300,39 @@ class InfoEntropy:
             camera_ang -> (rad) angle of view of camera
         """
         facingPoses = PoseArray()
+        poses2cam = PoseArray()
+        poses2cam.header.frame_id = '/map'
         facingPoses.header.frame_id = '/map'
 
         facing_index = np.zeros(self.numFaces)  # keep tabs of which face is seen
-
         # iterate through each pose and keep those that are facing camera
         f = 0
         for npose in normPoses.poses:
 
-            pdiff = self.posesubtract(camera_view.pose, npose)
-            pdiff_dir = self.dir_to_quaternion([pdiff.position.x, pdiff.position.y, pdiff.position.z])
+            a = camera_view.pose
+            b = npose
 
-            # check if the point is within the focal range of the camera
-            alpha = math.acos(self.quatdot(camera_view.pose.orientation, pdiff_dir))
-            if -camera_ang > alpha > camera_ang:
+            # check if
+
+            # vector from pointing from the camera to the normal
+            ba = self.posesubtract(b, a)
+            ba_q = self.dir_to_quaternion(ba.position)
+
+            # check if within fov of camera
+            ang_cam = math.acos(self.quatdot(ba_q, a.orientation))*2
+            if ang_cam > camera_ang/2:
+                f += 1
                 continue
 
-            # check if normal is facing the camera
-            dot = self.quatdot(npose.orientation, camera_view.pose.orientation)
-            bound = 0.01
-            if math.fabs(dot) < bound:
+            # dot between this vector and the normal
+            fdot = self.quatdot(ba_q, b.orientation) * 2
+
+            if math.fabs(fdot) < math.pi/2:
                 facingPoses.poses.append(npose)
                 facing_index[f] = 1     # list face as being seen
             f += 1
-
         self.facing_norms_pub.publish(facingPoses)
+        # self.norm2cam.publish(poses2cam)
         return facingPoses, facing_index
 
     def calc_projected_area(self, p0, p1, p2, rvec, tvec):
@@ -332,6 +392,19 @@ class InfoEntropy:
 
 
 # -------------------------- HELPERS -------------------
+    def normq(self, q):
+        return math.sqrt(q.x**2 + q.y**2 + q.z**2 + q.w**2)
+
+    def dir_to_euler(self, x, y, z):
+        n = math.sqrt(x**2 + y**2 + z**2)
+        x = x/n
+        y = y/n
+        z = z/n
+        yaw = math.atan2(y, x)
+        pitch = math.atan2(-z, math.sqrt(y ** 2 + x ** 2))
+        roll = 0
+
+        return roll, pitch, yaw
 
     def posesubtract(self, p1, p2):
         """
@@ -354,10 +427,10 @@ class InfoEntropy:
 
         # invert p2 orientation by negating w
         qinv = [0]*4
-        qinv[0] = p2.orientation.x
-        qinv[1] = p2.orientation.y
-        qinv[2] = p2.orientation.z
-        qinv[3] = -p2.orientation.w
+        qinv[0] = -p2.orientation.x
+        qinv[1] = -p2.orientation.y
+        qinv[2] = -p2.orientation.z
+        qinv[3] = p2.orientation.w
 
         q1 = [0] * 4
         q1[0] = p1.orientation.x
@@ -365,7 +438,7 @@ class InfoEntropy:
         q1[2] = p1.orientation.z
         q1[3] = p1.orientation.w
 
-        qr = tf_conversions.transformations.quaternion_multiply(qinv, q1)
+        qr = tf_conversions.transformations.quaternion_multiply(q1, qinv)
 
         P.orientation = Quaternion(qr[0], qr[1], qr[2], qr[3])
 
@@ -394,7 +467,7 @@ class InfoEntropy:
 
         return np
 
-    def dir_to_quaternion(self, dir):
+    def dir_to_quaternion(self, p):
         """
         converts a direction in 3D space to euler angles to quaternion
         args:
@@ -402,13 +475,8 @@ class InfoEntropy:
         returns:
             q -> (Quaternion)
         """
-        x = dir[0]
-        y = dir[1]
-        z = dir[2]
+        roll, pitch, yaw = self.dir_to_euler(p.x, p.y, p.z)
 
-        roll = 0
-        pitch = math.atan2(-z, y)
-        yaw = math.atan2(y, x)
         q = tf_conversions.transformations.quaternion_from_euler(roll, pitch, yaw, axes='rxyz')
         return Quaternion(q[0], q[1], q[2], q[3])
 
