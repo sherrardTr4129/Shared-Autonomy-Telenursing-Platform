@@ -17,12 +17,14 @@ import geometry_msgs.msg
 from math import pi
 from std_msgs.msg import String
 from std_srvs.srv import Empty
+from geometry_msgs.msg import PoseStamped
 from moveit_commander.conversions import pose_to_list
 from telenursing_trina2_ctrl.msg import joint_angle
 from telenursing_trina2_ctrl.srv import homeRobotLeftArmReq, homeRobotLeftArmReqResponse
 from std_msgs.msg import Float32, Float64
 from sensor_msgs.msg import Joy
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
+from geometry_msgs.msg import Vector3 
 global interfaceInstance
 
 # Misc variables
@@ -78,6 +80,7 @@ def startNode():
     global headcam_yaw
     global sec_cam
     global move_group1
+    global switchCam
 
     ## First initialize `moveit_commander`_ and a `rospy`_ node:
     #moveit_commander.roscpp_initialize(sys.argv)
@@ -92,17 +95,40 @@ def startNode():
 
     # subscribe to secondary cam topic to check which camera must be moved
     rospy.Subscriber("/secondaryCam", String, which_cam_callback, queue_size=1)
+    switchCam = rospy.Publisher("/secondaryCam", String, queue_size=1)
     # publish the yaw and pitch to the main head camera directly (no movegroup)
     headcam_yaw_pub = rospy.Publisher('/trina2_1/main_cam_yaw_controller/command', Float64,queue_size=1)
     headcam_pitch_pub = rospy.Publisher('/trina2_1/main_cam_pitch_controller/command', Float64, queue_size=10)
 
     rospy.Subscriber("/info_and_saliency_avg_pose", PoseStamped, vec_to_move, queue_size=1)
 
+    rospy.Publisher("/stop_to_fixate_vec", Vector3, stop_and_fixate, queue_size=1)
+
 
 def which_cam_callback(primary):
     global sec_cam
     # primary = std_msgs/String
     sec_cam = primary.data
+
+def stop_and_fixate(vector):
+    global headcam_pitch_pub
+    global headcam_yaw_pub
+    global headcam_pitch
+    global headcam_yaw
+
+    pitch_msg = Float64()
+    yaw_msg = Float64()
+
+    headcam_yaw = vector.y
+    yaw_msg.data = vector.y
+
+    headcam_pitch = vector.z
+    pitch_msg.data = vector.z
+
+    headcam_pitch_pub.publish(pitch_msg)
+    headcam_yaw_pub.publish(yaw_msg)
+
+    switchCam.publish("leftArm")
 
 # Takes in a 3d vector, moves the secondary camera incrementally
 def vec_to_move(vector):
@@ -112,11 +138,6 @@ def vec_to_move(vector):
     global headcam_yaw
     global sec_cam
     global move_group1
-
-    # determine xyz of vector, change format based on datatype of "vector"
-    # vecX = vector[0] # currently assuming vector is a 1x3 array
-    # vecY = vector[1]
-    # vecZ = vector[2]
 
     x_goal = vector.pose.position.x
     y_goal = vector.pose.position.y
@@ -152,10 +173,10 @@ def vec_to_move(vector):
 
         # maintain the same orientation to begin with
         pose_goal = geometry_msgs.msg.Pose()
-        pose_goal.orientation.w = ow + (o_w_goal * movescale) 
-        pose_goal.orientation.x = ox + (o_x_goal * movescale) 
-        pose_goal.orientation.y = oy + (o_y_goal * movescale)
-        pose_goal.orientation.z = oz + (o_z_goal * movescale)
+        pose_goal.orientation.w = ow
+        pose_goal.orientation.x = ox
+        pose_goal.orientation.y = oy
+        pose_goal.orientation.z = oz
 
         # swapping of x and y reflects how it works in webgui
         pose_goal.position.x = x + (x_goal * movescale)
