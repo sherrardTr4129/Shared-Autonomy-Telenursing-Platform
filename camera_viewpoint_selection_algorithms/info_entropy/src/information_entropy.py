@@ -45,9 +45,9 @@ class InfoEntropy:
         camera.header.frame_id = '/map'
         camera.pose.position.z = 1.5
         camera.pose.position.y = .25
-        camera.pose.position.x = 0
+        camera.pose.position.x = -1.5
 
-        camq = tf_conversions.transformations.quaternion_from_euler(0, .1, 0, axes='rxyz')
+        camq = tf_conversions.transformations.quaternion_from_euler(0, -0.1, 0, axes='rxyz')
         camera.pose.orientation.x = camq[0]
         camera.pose.orientation.y = camq[1]
         camera.pose.orientation.z = camq[2]
@@ -103,12 +103,12 @@ class InfoEntropy:
             self.normPoses = self.get_visible_faces()
             print('start----------------------------')
 
-            # self.calc_entropy_vec(camera)
+            self.calc_entropy_vec(camera)
 
             # print('start')
-            facingPoses, facingIndex = self.get_cam_facing(camera, self.normPoses, math.pi/2)
-            entropy = self.calc_entropy(facingIndex, self.rvec, self.tvec)
-            print(entropy, facingIndex)
+            # facingPoses, facingIndex = self.get_cam_facing(camera, self.normPoses, math.pi/2)
+            # entropy = self.calc_entropy(facingIndex, self.rvec, self.tvec)
+            # print(entropy, facingIndex)
 
             rate.sleep()
         return
@@ -162,7 +162,6 @@ class InfoEntropy:
         cam_pose_array = []
         entropy_vals = []
 
-        print('start')
         # loop through the camera positions and get entropy at each
         for s in step_list:
 
@@ -196,9 +195,10 @@ class InfoEntropy:
                 continue
 
             point = cam_pose_array[i].pose.position
-            sum_pos[0] += point.x * entropy_vals[i]
-            sum_pos[1] += point.y * entropy_vals[i]
-            sum_pos[2] += point.z * entropy_vals[i]
+            scale = math.fabs(entropy_vals[i])/nentropy
+            sum_pos[0] += point.x * scale
+            sum_pos[1] += point.y * scale
+            sum_pos[2] += point.z * scale
 
         entropy_vec = PoseStamped()
         entropy_vec.header.frame_id = '/map'
