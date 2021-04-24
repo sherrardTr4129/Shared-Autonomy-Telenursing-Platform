@@ -27,8 +27,12 @@ from geometry_msgs.msg import Pose
 from geometry_msgs.msg import Vector3 
 from std_msgs.msg import Float64
 
+global vec_pub
+
 # callback for bump angle
 def proc_bump_angle(data):
+    
+    global vec_pub
     rospy.loginfo("angle received")
 
     # determine pitch using height of robot and distance from wall
@@ -36,12 +40,12 @@ def proc_bump_angle(data):
     robot_height = 1.2 #m
     dist_to_bump = 0.6 #m
     # calculate pitch using negative robot height due to camera must look downwards
-    rad_from_straight_down = atan2(dist_to_bump/(-1*robot_height))
+    rad_from_straight_down = atan2(dist_to_bump,(-1*robot_height))
     pitch = pi/2 - rad_from_straight_down
     
     # convert the yaw data to radians as well
     yaw_deg = data.data # is in degrees currently
-    yaw = yaw_deg*pi/180
+    yaw = -1*yaw_deg*pi/180
 
     # set the camera pitch and yaw joint angles to the pitch and yaw
     headcam_ctrl = Vector3()
@@ -50,12 +54,13 @@ def proc_bump_angle(data):
     vec_pub.publish(headcam_ctrl)
 
 def main():
+    global vec_pub
     # init node
     rospy.init_node("headcam_stf")
     rospy.loginfo("headcam_stf node initialized")
 
     # create subscriber
-    angle_sub = rospy.Subscriber("/trina2_2/bump_angle", Float64, proc_bump_angle)
+    angle_sub = rospy.Subscriber("/trina2_1/bump_angle", Float64, proc_bump_angle)
     vec_pub = rospy.Publisher("/stop_to_fixate_vec", Vector3, queue_size=1)
     rospy.spin()
 

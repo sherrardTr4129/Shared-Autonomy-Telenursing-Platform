@@ -86,7 +86,7 @@ def startNode():
     #moveit_commander.roscpp_initialize(sys.argv)
     rospy.init_node('roll_reduction', anonymous=True)
 
-    # initialize head_cam pitch and yaw positions
+    # initialize head_cam pitch and yaw positions to match the default starting ones
     headcam_pitch = 0.0
     headcam_yaw = 0.0
     sec_cam = "leftArm" # "head" for main_cam, "leftArm" for left_arm movement
@@ -102,7 +102,7 @@ def startNode():
 
     rospy.Subscriber("/info_and_saliency_avg_pose", PoseStamped, vec_to_move, queue_size=1)
 
-    rospy.Publisher("/stop_to_fixate_vec", Vector3, stop_and_fixate, queue_size=1)
+    rospy.Subscriber("/stop_to_fixate_vec", Vector3, stop_and_fixate, queue_size=1)
 
 
 def which_cam_callback(primary):
@@ -119,11 +119,16 @@ def stop_and_fixate(vector):
     pitch_msg = Float64()
     yaw_msg = Float64()
 
-    headcam_yaw = vector.y
-    yaw_msg.data = vector.y
+    pitch_msg.data = headcam_pitch
+    yaw_msg.data = headcam_yaw
 
-    headcam_pitch = vector.z
-    pitch_msg.data = vector.z
+    if (abs(vector.y - headcam_yaw) > 3.14 / 6):
+        headcam_yaw = vector.y
+        yaw_msg.data = vector.y
+
+    if (abs(vector.z - headcam_pitch) > 3.14 / 6):
+        headcam_pitch = vector.z
+        pitch_msg.data = vector.z
 
     headcam_pitch_pub.publish(pitch_msg)
     headcam_yaw_pub.publish(yaw_msg)
@@ -247,10 +252,10 @@ if __name__ == "__main__":
     # # headcam_pitch_pub.publish(pitch_msg)
     # rospy.loginfo(pitch_msg)
     # rospy.loginfo(" we are publishing pitch")
-    #rospy.spin()
-    while not rospy.is_shutdown():
+    rospy.spin()
+    # while not rospy.is_shutdown():
         
-        vec_to_move(move_vector)
+    #     vec_to_move(move_vector)
         
         # if(pitch_msg.data < 60.0):
         #     pitch_msg.data += 0.1
