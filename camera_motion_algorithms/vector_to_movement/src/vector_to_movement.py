@@ -96,6 +96,8 @@ def startNode():
     headcam_yaw_pub = rospy.Publisher('/trina2_1/main_cam_yaw_controller/command', Float64,queue_size=1)
     headcam_pitch_pub = rospy.Publisher('/trina2_1/main_cam_pitch_controller/command', Float64, queue_size=10)
 
+    rospy.Subscriber("/info_and_saliency_avg_pose", PoseStamped, vec_to_move, queue_size=1)
+
 
 def which_cam_callback(primary):
     global sec_cam
@@ -112,9 +114,18 @@ def vec_to_move(vector):
     global move_group1
 
     # determine xyz of vector, change format based on datatype of "vector"
-    vecX = vector[0] # currently assuming vector is a 1x3 array
-    vecY = vector[1]
-    vecZ = vector[2]
+    # vecX = vector[0] # currently assuming vector is a 1x3 array
+    # vecY = vector[1]
+    # vecZ = vector[2]
+
+    x_goal = vector.pose.position.x
+    y_goal = vector.pose.position.y
+    z_goal = vector.pose.position.z
+
+    o_x_goal = vector.pose.orientation.x
+    o_y_goal = vector.pose.orientation.y
+    o_z_goal = vector.pose.orientation.z
+    o_w_goal = vector.pose.orientation.w
 
     # since only the left arm uses a movegroup for the cameras, movegroup will always be move_group1
     move_group = move_group1
@@ -136,19 +147,20 @@ def vec_to_move(vector):
         pitch = pitchRe
         yaw = yawRe
 
-        # maintain the same orientation to begin with
-        pose_goal = geometry_msgs.msg.Pose()
-        pose_goal.orientation.w = ow
-        pose_goal.orientation.x = ox
-        pose_goal.orientation.y = oy
-        pose_goal.orientation.z = oz
-
         # increment the motion for the goal based on the input vector
         movescale = 0.05 # formerly 0.05
+
+        # maintain the same orientation to begin with
+        pose_goal = geometry_msgs.msg.Pose()
+        pose_goal.orientation.w = ow + (o_w_goal * movescale) 
+        pose_goal.orientation.x = ox + (o_x_goal * movescale) 
+        pose_goal.orientation.y = oy + (o_y_goal * movescale)
+        pose_goal.orientation.z = oz + (o_z_goal * movescale)
+
         # swapping of x and y reflects how it works in webgui
-        pose_goal.position.x = x + (vecX * movescale)
-        pose_goal.position.y = y + (vecY * movescale)
-        pose_goal.position.z = z + (vecZ * movescale)
+        pose_goal.position.x = x + (x_goal * movescale)
+        pose_goal.position.y = y + (y_goal * movescale)
+        pose_goal.position.z = z + (z_goal * movescale)
         
         print("pose_goal: ")
         rospy.loginfo(pose_goal)
@@ -180,16 +192,16 @@ def vec_to_move(vector):
         yaw_msg.data = headcam_yaw
 
         # move in direction of the vector in small steps
-        if vecY > 0: 
+        if y_goal > 0: 
             yaw_msg.data += 0.1
             headcam_yaw += 0.1
-        elif vecY < 0:
+        elif y_goal < 0:
             yaw_msg.data -= 0.1
             headcam_yaw -= 0.1
-        if vecZ > 0:
+        if z_goal > 0:
             pitch_msg.data += 0.1
             headcam_pitch += 0.1
-        elif vecZ < 0:
+        elif z_goal < 0:
             pitch_msg.data -= 0.1
             headcam_pitch -= 0.1
 
