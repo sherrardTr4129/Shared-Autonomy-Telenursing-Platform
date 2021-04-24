@@ -44,6 +44,7 @@ def combined_callback(info_pose, sal_vec):
 
     # create new pose
     new_pose = PoseStamped()
+    new_pose.header.frame_id = "/map"
     new_pose.header.stamp = rospy.Time.now()
 
     # add scaled vector to information entropy pose

@@ -17,7 +17,8 @@ import operator
 moveVecTopic = "/saliency_move_vec"
 
 # image topic
-imageTopic = "/trina2_1/secondaryCameraStream/color/image_raw"
+# imageTopic = "/trina2_1/secondaryCameraStream/color/image_raw"
+imageTopic = "/trina2_1/left_arm_cam/color/image_raw"
 
 # set up Pose publisher for newly computed Pose
 vecPub = rospy.Publisher(moveVecTopic, Vector3Stamped)
@@ -135,7 +136,7 @@ def computeSaliencyMap(img):
         # threshold image
         ret, thresh = cv2.threshold(blur, threshVal, maxVal, cv2.THRESH_BINARY)
         
-        contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        _, contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
         
         # filter detected contours
         filteredContours = []

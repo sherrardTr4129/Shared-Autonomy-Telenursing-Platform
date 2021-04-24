@@ -101,7 +101,7 @@ class InfoEntropy:
         while not rospy.is_shutdown():
             self.camera_pub.publish(camera)
             self.normPoses = self.get_visible_faces()
-            print('start----------------------------')
+            # print('start----------------------------')
 
             self.calc_entropy_vec(camera)
 
@@ -181,7 +181,7 @@ class InfoEntropy:
 
             facingPoses, facingIndex = self.get_cam_facing(new_cam, self.normPoses, math.pi)
             entropy = self.calc_entropy(facingIndex, rvec, tvec)
-            print(s, facingIndex, entropy)
+            # print(s, facingIndex, entropy)
             entropy_vals.append(entropy)
 
         nentropy = np.linalg.norm(np.asarray(entropy_vals))     # get norm of entropy values
@@ -202,6 +202,7 @@ class InfoEntropy:
 
         entropy_vec = PoseStamped()
         entropy_vec.header.frame_id = '/map'
+        entropy_vec.header.stamp = rospy.Time.now()
         entropy_vec.pose.orientation = camera.pose.orientation
         entropy_vec.pose.position.x = sum_pos[0]/num_poses
         entropy_vec.pose.position.y = sum_pos[1]/num_poses
