@@ -18,6 +18,9 @@ import os
 import tf
 import tf_conversions
 from tf.transformations import quaternion_matrix
+import moveit_commander
+import moveit_msgs.msg
+from moveit_commander.conversions import pose_to_list
 
 
 class InfoEntropy:
@@ -27,7 +30,7 @@ class InfoEntropy:
     #   for each face, calculate entropy
 
     def __init__(self):
-        rospy.init_node('info_entropy', anonymous=True)
+        rospy.init_node('info_entropy', log_level=rospy.DEBUG, anonymous=True)
 
         # attributes  ---------------------
         self.cube = None
@@ -41,6 +44,8 @@ class InfoEntropy:
         self.br = tf.TransformBroadcaster()
 
         # camera properties  ---------------------
+        # self.move_group1 = moveit_commander.MoveGroupCommander("left_arm")
+
         camera = PoseStamped()
         camera.header.frame_id = 'map'
         camera.pose.position.z = 1.5
@@ -78,9 +83,7 @@ class InfoEntropy:
         self.facing_norms_pub = rospy.Publisher('facing_norms', PoseArray, queue_size=10)
         self.camera_pub = rospy.Publisher('cam', PoseStamped, queue_size=10)
         self.new_camera_pub = rospy.Publisher('cam_array', PoseArray, queue_size=10)
-
         self.norm2cam = rospy.Publisher('n2c', PoseArray, queue_size=10)
-
         self.entropy_vec_pub = rospy.Publisher('entropy', PoseStamped, queue_size=10)
 
         # subscriber
@@ -88,22 +91,27 @@ class InfoEntropy:
 
         # wait for listener for transformation to object
         self.listener = tf.TransformListener()
-        # try:
         self.listener.waitForTransform("map", self.box_frame, rospy.Time(0), rospy.Duration(5))
-        # except:
-        #     pass
 
         # start
         self.get_obj()
 
         rate = rospy.Rate(10)
+        move_group = moveit_commander.MoveGroupCommander("left_arm")
+        # camera_ps = PoseStamped()
+        # camera_ps.header.frame_id = "/map"
 
         while not rospy.is_shutdown():
-            self.camera_pub.publish(camera)
+            camera_ps = move_group.get_current_pose()
+            # camera_ps.header.stamp = rospy.Time.now()
+            rospy.logdebug("Camera")
+            rospy.logdebug(camera_ps)
+
+            self.camera_pub.publish(camera_ps)
             self.normPoses = self.get_visible_faces()
             # print('start----------------------------')
 
-            self.calc_entropy_vec(camera)
+            self.calc_entropy_vec(camera_ps)
 
             # print('start')
             # facingPoses, facingIndex = self.get_cam_facing(camera, self.normPoses, math.pi/2)
@@ -207,6 +215,8 @@ class InfoEntropy:
         entropy_vec.pose.position.x = sum_pos[0]/num_poses
         entropy_vec.pose.position.y = sum_pos[1]/num_poses
         entropy_vec.pose.position.z = sum_pos[2]/num_poses
+
+        rospy.logdebug(entropy_vec)
 
         # print(entropy_vec)
         self.entropy_vec_pub.publish(entropy_vec)
