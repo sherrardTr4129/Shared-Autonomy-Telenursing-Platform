@@ -1,0 +1,7 @@
+<launch>
+    <arg name="robot_name" default="trina2"/>
+    <arg name="robot_name_1" default="$(arg robot_name)_1"/>    
+    
+    <node ns="$(arg robot_name_1)" name="vector_to_movement" pkg="vector_to_movement" type="vector_to_movement.py" output="screen" respawn="false"/>
+
+</launch>
