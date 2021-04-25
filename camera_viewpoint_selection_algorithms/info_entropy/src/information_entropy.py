@@ -42,7 +42,7 @@ class InfoEntropy:
 
         # camera properties  ---------------------
         camera = PoseStamped()
-        camera.header.frame_id = '/map'
+        camera.header.frame_id = 'map'
         camera.pose.position.z = 1.5
         camera.pose.position.y = .25
         camera.pose.position.x = -1.5
@@ -63,7 +63,7 @@ class InfoEntropy:
         self.screen_area = (2*619.55)**2
 
         camera2 = PoseStamped()
-        camera2.header.frame_id = '/map'
+        camera2.header.frame_id = 'map'
         camera2.pose.position.z = 0
         camera2.pose.position.x = 0
         camera2.pose.orientation.w = 1
@@ -117,7 +117,7 @@ class InfoEntropy:
         q = [msg.orientation.x, msg.orientation.y, msg.orientation.z, msg.orientation.w]
 
         self.br.sendTransform((msg.position.x/self.bag_scale, msg.position.y/self.bag_scale, msg.position.z/self.bag_scale),
-                              q, rospy.Time.now(), self.box_frame, '/map')
+                              q, rospy.Time.now(), self.box_frame, 'map')
 
     def get_obj(self):
         """
@@ -167,7 +167,7 @@ class InfoEntropy:
 
             # create a new camera based on values of original camera
             new_cam = PoseStamped()
-            new_cam.header.frame_id = '/map'
+            new_cam.header.frame_id = 'map'
             new_cam.pose.orientation = camera.pose.orientation
             new_cam.pose.position.x = camera.pose.position.x + s[0]
             new_cam.pose.position.y = camera.pose.position.y + s[1]
@@ -201,7 +201,7 @@ class InfoEntropy:
             sum_pos[2] += point.z * scale
 
         entropy_vec = PoseStamped()
-        entropy_vec.header.frame_id = '/map'
+        entropy_vec.header.frame_id = 'map'
         entropy_vec.header.stamp = rospy.Time.now()
         entropy_vec.pose.orientation = camera.pose.orientation
         entropy_vec.pose.position.x = sum_pos[0]/num_poses
@@ -224,10 +224,10 @@ class InfoEntropy:
         v2_list = self.cube.v2
         # init the pose array to populate
         normPoses = PoseArray()
-        normPoses.header.frame_id = '/map'
+        normPoses.header.frame_id = 'map'
 
         verts = PointCloud()
-        verts.header.frame_id = '/map'
+        verts.header.frame_id = 'map'
 
         # for i in range(len(normals)):
         for i in range(len(normals)):
@@ -265,7 +265,7 @@ class InfoEntropy:
             ps = PoseStamped()
             ps.pose = p
             ps.header.frame_id = self.box_frame
-            trans_p = self.listener.transformPose('/map', ps)
+            trans_p = self.listener.transformPose('map', ps)
 
             # add transformed pose to the list of faces
             normPoses.poses.append(trans_p.pose)
@@ -287,7 +287,7 @@ class InfoEntropy:
             npoint.point.y = n[1]
             npoint.point.z = n[2]
 
-            tn = self.listener.transformPoint('/map', npoint)
+            tn = self.listener.transformPoint('map', npoint)
             tnormals.append(tn)
         return tnormals
 
@@ -302,8 +302,8 @@ class InfoEntropy:
         """
         facingPoses = PoseArray()
         poses2cam = PoseArray()
-        poses2cam.header.frame_id = '/map'
-        facingPoses.header.frame_id = '/map'
+        poses2cam.header.frame_id = 'map'
+        facingPoses.header.frame_id = 'map'
 
         facing_index = np.zeros(self.numFaces)  # keep tabs of which face is seen
         # iterate through each pose and keep those that are facing camera
