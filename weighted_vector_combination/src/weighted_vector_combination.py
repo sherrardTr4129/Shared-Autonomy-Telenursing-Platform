@@ -28,6 +28,7 @@ movePoseTopic = "/info_and_saliency_avg_pose"
 # set up Pose publisher for newly computed Pose
 posePub = rospy.Publisher(movePoseTopic, PoseStamped)
 
+
 def combined_callback(info_pose, sal_vec):
     """
     This callback adds the saliency vector as an offset to the 
@@ -61,6 +62,7 @@ def combined_callback(info_pose, sal_vec):
     # republish new pose
     posePub.publish(new_pose)
 
+
 def main():
     rospy.init_node("weighted_vector_combination_node")
     rospy.loginfo("weighted_vector_combination_node started!")
@@ -73,6 +75,7 @@ def main():
     approxSync = message_filters.ApproximateTimeSynchronizer([info_pose_sub, sal_vector_sub], queue_size=10, slop=0.3)
     approxSync.registerCallback(combined_callback)
     rospy.spin()
+
 
 if(__name__ == "__main__"):
     main()

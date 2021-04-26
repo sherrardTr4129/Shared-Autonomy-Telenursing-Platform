@@ -208,7 +208,7 @@ class InfoEntropy:
         entropy_vec.pose.position.y = sum_pos[1]/num_poses
         entropy_vec.pose.position.z = sum_pos[2]/num_poses
 
-        # print(entropy_vec)
+        print(entropy_vec)
         self.entropy_vec_pub.publish(entropy_vec)
 
     def get_visible_faces(self):
