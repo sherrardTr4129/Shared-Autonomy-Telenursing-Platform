@@ -6,7 +6,8 @@
 import rospy
 from sensor_msgs.msg import Image
 from geometry_msgs.msg import Vector3, PoseArray, PoseStamped, Pose, TransformStamped, Vector3Stamped, Quaternion, PointStamped
-from sensor_msgs.msg import PointCloud
+from sensor_msgs.msg import PointCloud, CameraInfo
+from gazebo_msgs.msg import ModelState
 import geometry_msgs.msg
 from std_msgs.msg import Float32
 import cv2
@@ -44,8 +45,7 @@ class InfoEntropy:
         self.br = tf.TransformBroadcaster()
 
         # camera properties  ---------------------
-        # self.move_group1 = moveit_commander.MoveGroupCommander("left_arm")
-
+        self.move_group = moveit_commander.MoveGroupCommander("left_arm")
         camera = PoseStamped()
         camera.header.frame_id = 'map'
         camera.pose.position.z = 1.5
@@ -63,20 +63,8 @@ class InfoEntropy:
         self.tvec = [camera.pose.position.x, camera.pose.position.y, camera.pose.position.z]
 
         self.camera_matrix = [[619.55, 0, 429.5], [0, 619.55, 360.5], [0, 0, 1]]
-        self.projection_M = [[619.55, 0, 429.5, 0], [0, 619.55, 360.5, 0], [0, 0, 1, 0]]
 
         self.screen_area = (2*619.55)**2
-
-        camera2 = PoseStamped()
-        camera2.header.frame_id = 'map'
-        camera2.pose.position.z = 0
-        camera2.pose.position.x = 0
-        camera2.pose.orientation.w = 1
-
-        camR2 = quaternion_matrix([camera2.pose.orientation.x, camera2.pose.orientation.y, camera2.pose.orientation.z,
-                                  camera2.pose.orientation.w])
-        self.rvec2, _ = cv2.Rodrigues(np.asarray(camR2))
-        self.tvec2 = [camera2.pose.position.x, camera2.pose.position.y, camera2.pose.position.z]
 
         # publishers ---------------------
         self.normals_pub = rospy.Publisher('norms', PoseArray, queue_size=10)
@@ -85,9 +73,11 @@ class InfoEntropy:
         self.new_camera_pub = rospy.Publisher('cam_array', PoseArray, queue_size=10)
         self.norm2cam = rospy.Publisher('n2c', PoseArray, queue_size=10)
         self.entropy_vec_pub = rospy.Publisher('entropy', PoseStamped, queue_size=10)
+        self.box_pose = rospy.Publisher('/gazebo/set_model_state', ModelState, queue_size=10)
 
         # subscriber
         rospy.Subscriber('/fused_BNO_Kinect_Pose', Pose, self.obj_pos_callback)
+        rospy.Subscriber('/trina2_1/left_arm_cam/color/camera_info', CameraInfo, self.cam_info_callback)
 
         # wait for listener for transformation to object
         self.listener = tf.TransformListener()
@@ -97,15 +87,12 @@ class InfoEntropy:
         self.get_obj()
 
         rate = rospy.Rate(10)
-        move_group = moveit_commander.MoveGroupCommander("left_arm")
-        # camera_ps = PoseStamped()
-        # camera_ps.header.frame_id = "/map"
-
+        camera_ps = camera
         while not rospy.is_shutdown():
-            camera_ps = move_group.get_current_pose()
+            camera_ps = self.move_group.get_current_pose()
             # camera_ps.header.stamp = rospy.Time.now()
-            rospy.logdebug("Camera")
-            rospy.logdebug(camera_ps)
+            # rospy.logdebug("Camera")
+            # rospy.logdebug(camera_ps)
 
             self.camera_pub.publish(camera_ps)
             self.normPoses = self.get_visible_faces()
@@ -124,8 +111,32 @@ class InfoEntropy:
     def obj_pos_callback(self, msg):
         q = [msg.orientation.x, msg.orientation.y, msg.orientation.z, msg.orientation.w]
 
-        self.br.sendTransform((msg.position.x/self.bag_scale, msg.position.y/self.bag_scale, msg.position.z/self.bag_scale),
+        scaledP = Pose()
+        scaledP.position.x = msg.position.x/self.bag_scale
+        scaledP.position.y = msg.position.y/self.bag_scale
+        scaledP.position.z = msg.position.z/self.bag_scale
+        scaledP.orientation = msg.orientation
+
+        self.br.sendTransform((scaledP.position.x, scaledP.position.y, scaledP.position.z),
                               q, rospy.Time.now(), self.box_frame, 'map')
+
+        box_state = ModelState()
+        box_state.model_name = "box"
+        box_state.reference_frame = "/map"
+        box_state.pose = scaledP
+        self.box_pose.publish(box_state)
+
+    def cam_info_callback(self, msg):
+        K = msg.K
+        self.camera_matrix = np.asarray([[K[0], K[1], K[2]], [K[3], K[4], K[5]], [K[6], K[7], K[8]]])
+
+        camera = self.move_group.get_current_pose()
+        camR = quaternion_matrix([camera.pose.orientation.x, camera.pose.orientation.y, camera.pose.orientation.z,
+                                  camera.pose.orientation.w])
+
+        self.rvec, _ = cv2.Rodrigues(np.asarray(camR))
+        self.tvec = [camera.pose.position.x, camera.pose.position.y, camera.pose.position.z]
+
 
     def get_obj(self):
         """
@@ -216,7 +227,7 @@ class InfoEntropy:
         entropy_vec.pose.position.y = sum_pos[1]/num_poses
         entropy_vec.pose.position.z = sum_pos[2]/num_poses
 
-        rospy.logdebug(entropy_vec)
+        # rospy.logdebug(entropy_vec)
 
         # print(entropy_vec)
         self.entropy_vec_pub.publish(entropy_vec)
