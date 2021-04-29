@@ -18,10 +18,10 @@ from geometry_msgs.msg import Vector3Stamped
 
 # declare vector weight. This value will be used
 # to scale the saliency vector.
-SAL_VECTOR_WEIGHT = 0.5
+SAL_VECTOR_WEIGHT = 0.1
 
 # declare topic names
-information_entropy_pose_topic = "entropy"
+information_entropy_pose_topic = "/trina2_1/entropy"
 saliency_max_vector_topic = "/saliency_move_vec"
 movePoseTopic = "/info_and_saliency_avg_pose"
 

@@ -9,20 +9,32 @@
 
 
 <!--       Spawn Box--> -->
-    <node name="spawn_box" pkg="gazebo_ros" type="spawn_model" args="-file $(find info_entropy)/urdfs/box.urdf -urdf -x 0.5 -y -1.0 -z 0.5 -model box" />
+    <node name="spawn_box" pkg="gazebo_ros" type="spawn_model" args="-file $(find info_entropy)/urdfs/box.urdf -urdf -x 0.5 -y 1.0 -z 0.5 -model box" />
 
     <param name="robot_description" command="$(find xacro)/xacro.py '$(find info_entropy)/urdfs/box.urdf'"/>
 
+<!--     <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher"> -->
+<!--         <param name="use_gui" value="false"/> -->
+<!--     </node> -->
 
-    <node pkg="tf" type="static_transform_publisher" name="model_broadcaster" args=" -0.5 -1.0 0.5 0 0 0 /map /box 100" />
+<!--        --><!-- Combine joint values -->
+<!--     <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/> -->
+
+
+<!--     <node pkg="tf" type="static_transform_publisher" name="model_broadcaster" args=" -0.5 1.0 0.5 0 0 0 /map /box 100" /> -->
+
+
 
 <!--  Vector Combos-->
 <!--     <node ns="$(arg robot_name_1)" name="info_vec" pkg="info_entropy" type="information_entropy.py" output="screen" respawn="false"/> -->
 
-<!--     <node name="sal_vec" pkg="saliency_to_vec" type="saliency_to_vec.py" /> -->
-<!--     <node name="weighted_vec" pkg="weighted_vector_combination" type="weighted_vector_combination.py" /> -->
+    <node name="sal_vec" pkg="saliency_to_vec" type="saliency_to_vec.py" />
+    <node name="weighted_vec" pkg="weighted_vector_combination" type="weighted_vector_combination.py" />
 
 <!--      Run Bag File in command line-->
 
+
+<!--  Web GUI-->
+    <include file="$(find telenursing_web_gui)/launch/GUI.launch" />
 
 </launch>
