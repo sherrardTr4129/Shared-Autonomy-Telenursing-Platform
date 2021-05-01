@@ -23,6 +23,7 @@ from telenursing_trina2_ctrl.msg import joint_angle
 from telenursing_trina2_ctrl.srv import homeRobotLeftArmReq, homeRobotLeftArmReqResponse
 from std_msgs.msg import Float32, Float64
 from sensor_msgs.msg import Joy
+import tf
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 from geometry_msgs.msg import Vector3 
 global interfaceInstance
@@ -81,6 +82,7 @@ def startNode():
     global sec_cam
     global move_group1
     global switchCam
+    global listener
 
     ## First initialize `moveit_commander`_ and a `rospy`_ node:
     #moveit_commander.roscpp_initialize(sys.argv)
@@ -91,6 +93,10 @@ def startNode():
     headcam_yaw = 0.0
     sec_cam = "leftArm" # "head" for main_cam, "leftArm" for left_arm movement
     move_group1 = moveit_commander.MoveGroupCommander("left_arm")
+
+    listener = tf.TransformListener()
+
+    # listener.waitForTransform("/map", "/trina2_1/base_link", rospy.Time(0), rospy.Duration(5))
 
 
     # subscribe to secondary cam topic to check which camera must be moved
@@ -158,7 +164,8 @@ def vec_to_move(vector):
     if (sec_cam == "leftArm"):
 
         #current_move_group = move_group1
-        current_pose = move_group.get_current_pose().pose
+        current_pose = move_group.get_current_pose()
+        current_pose = listener.transformPose('/map', move_group.get_current_pose()).pose
         print("current pose: ")
         rospy.loginfo(current_pose)
         x = current_pose.position.x
@@ -184,14 +191,23 @@ def vec_to_move(vector):
         pose_goal.orientation.z = oz
 
         # swapping of x and y reflects how it works in webgui
-        pose_goal.position.x = x + (x_goal * movescale)
-        pose_goal.position.y = y + (y_goal * movescale)
-        pose_goal.position.z = z + (z_goal * movescale)
+        pose_goal.position.x = x - (x_goal * movescale)
+        pose_goal.position.y = y - (y_goal * movescale)
+        pose_goal.position.z = z - (z_goal * movescale)
         
         print("pose_goal: ")
         rospy.loginfo(pose_goal)
 
         # execute the planned motion
+        ps = geometry_msgs.msg.PoseStamped()
+        ps.header.frame_id = '/map'
+        ps.pose = pose_goal
+        ps = listener.transformPose('/trina2_1/base_link', ps)
+
+        pose_goal = ps.pose
+
+        print("transformed goal")
+        rospy.loginfo(ps)
         move_group.set_pose_target(pose_goal)
         move_group.set_goal_tolerance = 0.08
         

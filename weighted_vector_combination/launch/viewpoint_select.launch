@@ -39,4 +39,9 @@
 <!--  Web GUI-->
     <include file="$(find telenursing_web_gui)/launch/GUI.launch" />
 
+<!--  Movement Files    -->
+    <include file="$(find vector_to_movement)/launch/vector_to_movement.launch"/>
+    <node name="stoptofixate" pkg="stop_to_fixate" type="headcam_stf.py"/>
+    <node name="lidartobump" pkg="lidar_to_bump" type="lidar_to_bump.py"/>
+
 </launch>

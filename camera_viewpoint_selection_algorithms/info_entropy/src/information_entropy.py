@@ -45,7 +45,7 @@ class InfoEntropy:
         self.br = tf.TransformBroadcaster()
 
         # camera properties  ---------------------
-        self.move_group = moveit_commander.MoveGroupCommander("right_arm")
+        self.move_group = moveit_commander.MoveGroupCommander("left_arm")
         camera = PoseStamped()
         camera.header.frame_id = 'map'
         camera.pose.position.z = 1.5
@@ -77,7 +77,7 @@ class InfoEntropy:
 
         # subscriber
         rospy.Subscriber('/fused_BNO_Kinect_Pose', Pose, self.obj_pos_callback)
-        rospy.Subscriber('/trina2_1/right_arm_cam/color/camera_info', CameraInfo, self.cam_info_callback)
+        rospy.Subscriber('/trina2_1/left_arm_cam/color/camera_info', CameraInfo, self.cam_info_callback)
 
         # wait for listener for transformation to object
         self.listener = tf.TransformListener()
@@ -91,8 +91,9 @@ class InfoEntropy:
         while not rospy.is_shutdown():
             camera_ps = self.transform_cam(self.move_group.get_current_pose(), 0, -math.pi/2, 0)
 
+
             # rospy.logdebug("start-----------------------")
-            # rospy.logdebug(camera_ps)
+            rospy.logdebug(camera_ps)
             self.camera_pub.publish(camera_ps)
             self.normPoses = self.get_visible_faces()
 
