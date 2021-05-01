@@ -106,8 +106,10 @@ class InfoEntropy:
         scaledP = Pose()
         scaledP.position.x = msg.position.x/self.bag_scale + 0.5
         scaledP.position.y = msg.position.y/self.bag_scale
-        scaledP.position.z = msg.position.z/self.bag_scale
+        scaledP.position.z = msg.position.z/self.bag_scale + .25
         scaledP.orientation = msg.orientation
+        scaledP.orientation.z = msg.orientation.y
+        scaledP.orientation.y = -msg.orientation.z
 
         self.br.sendTransform((scaledP.position.x, scaledP.position.y, scaledP.position.z),
                               q, rospy.Time.now(), self.box_frame, 'map')
@@ -141,8 +143,8 @@ class InfoEntropy:
         """
         rospack = rospkg.RosPack()
         pkgpath = rospack.get_path('info_entropy')
-        # stlpath = os.path.join(pkgpath, 'urdfs', 'box.STL')
-        stlpath = os.path.join(pkgpath, 'urdfs', 'weird shape.STL')
+        stlpath = os.path.join(pkgpath, 'urdfs', 'box.STL')
+        # stlpath = os.path.join(pkgpath, 'urdfs', 'weird shape.STL')
 
         cube_mesh = mesh.Mesh.from_file(stlpath)
 
