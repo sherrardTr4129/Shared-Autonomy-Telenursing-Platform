@@ -1,0 +1,8 @@
+<launch>
+
+    <arg name="robot_name" default="trina2"/>
+    <arg name="robot_name_1" default="$(arg robot_name)_1"/>
+
+    <node ns="$(arg robot_name_1)" name="info_vec" pkg="info_entropy" type="information_entropy.py" output="screen" respawn="false"/>
+
+</launch>

@@ -6,7 +6,8 @@
 import rospy
 from sensor_msgs.msg import Image
 from geometry_msgs.msg import Vector3, PoseArray, PoseStamped, Pose, TransformStamped, Vector3Stamped, Quaternion, PointStamped
-from sensor_msgs.msg import PointCloud
+from sensor_msgs.msg import PointCloud, CameraInfo
+from gazebo_msgs.msg import ModelState
 import geometry_msgs.msg
 from std_msgs.msg import Float32
 import cv2
@@ -18,6 +19,9 @@ import os
 import tf
 import tf_conversions
 from tf.transformations import quaternion_matrix
+import moveit_commander
+import moveit_msgs.msg
+from moveit_commander.conversions import pose_to_list
 
 
 class InfoEntropy:
@@ -27,7 +31,7 @@ class InfoEntropy:
     #   for each face, calculate entropy
 
     def __init__(self):
-        rospy.init_node('info_entropy', anonymous=True)
+        rospy.init_node('info_entropy', log_level=rospy.DEBUG, anonymous=True)
 
         # attributes  ---------------------
         self.cube = None
@@ -41,6 +45,7 @@ class InfoEntropy:
         self.br = tf.TransformBroadcaster()
 
         # camera properties  ---------------------
+        self.move_group = moveit_commander.MoveGroupCommander("right_arm")
         camera = PoseStamped()
         camera.header.frame_id = 'map'
         camera.pose.position.z = 1.5
@@ -58,66 +63,73 @@ class InfoEntropy:
         self.tvec = [camera.pose.position.x, camera.pose.position.y, camera.pose.position.z]
 
         self.camera_matrix = [[619.55, 0, 429.5], [0, 619.55, 360.5], [0, 0, 1]]
-        self.projection_M = [[619.55, 0, 429.5, 0], [0, 619.55, 360.5, 0], [0, 0, 1, 0]]
 
         self.screen_area = (2*619.55)**2
-
-        camera2 = PoseStamped()
-        camera2.header.frame_id = 'map'
-        camera2.pose.position.z = 0
-        camera2.pose.position.x = 0
-        camera2.pose.orientation.w = 1
-
-        camR2 = quaternion_matrix([camera2.pose.orientation.x, camera2.pose.orientation.y, camera2.pose.orientation.z,
-                                  camera2.pose.orientation.w])
-        self.rvec2, _ = cv2.Rodrigues(np.asarray(camR2))
-        self.tvec2 = [camera2.pose.position.x, camera2.pose.position.y, camera2.pose.position.z]
 
         # publishers ---------------------
         self.normals_pub = rospy.Publisher('norms', PoseArray, queue_size=10)
         self.facing_norms_pub = rospy.Publisher('facing_norms', PoseArray, queue_size=10)
         self.camera_pub = rospy.Publisher('cam', PoseStamped, queue_size=10)
         self.new_camera_pub = rospy.Publisher('cam_array', PoseArray, queue_size=10)
-
         self.norm2cam = rospy.Publisher('n2c', PoseArray, queue_size=10)
-
         self.entropy_vec_pub = rospy.Publisher('entropy', PoseStamped, queue_size=10)
+        self.box_pose = rospy.Publisher('/gazebo/set_model_state', ModelState, queue_size=10)
 
         # subscriber
         rospy.Subscriber('/fused_BNO_Kinect_Pose', Pose, self.obj_pos_callback)
+        rospy.Subscriber('/trina2_1/right_arm_cam/color/camera_info', CameraInfo, self.cam_info_callback)
 
         # wait for listener for transformation to object
         self.listener = tf.TransformListener()
-        # try:
         self.listener.waitForTransform("map", self.box_frame, rospy.Time(0), rospy.Duration(5))
-        # except:
-        #     pass
 
         # start
         self.get_obj()
 
         rate = rospy.Rate(10)
-
+        # camera_ps = camera
         while not rospy.is_shutdown():
-            self.camera_pub.publish(camera)
+            camera_ps = self.transform_cam(self.move_group.get_current_pose(), 0, -math.pi/2, 0)
+
+            # rospy.logdebug("start-----------------------")
+            # rospy.logdebug(camera_ps)
+            self.camera_pub.publish(camera_ps)
             self.normPoses = self.get_visible_faces()
-            # print('start----------------------------')
 
-            self.calc_entropy_vec(camera)
-
-            # print('start')
-            # facingPoses, facingIndex = self.get_cam_facing(camera, self.normPoses, math.pi/2)
-            # entropy = self.calc_entropy(facingIndex, self.rvec, self.tvec)
-            # print(entropy, facingIndex)
-
+            self.calc_entropy_vec(camera_ps)
             rate.sleep()
         return
 
     def obj_pos_callback(self, msg):
         q = [msg.orientation.x, msg.orientation.y, msg.orientation.z, msg.orientation.w]
 
-        self.br.sendTransform((msg.position.x/self.bag_scale, msg.position.y/self.bag_scale, msg.position.z/self.bag_scale),
+        scaledP = Pose()
+        scaledP.position.x = msg.position.x/self.bag_scale + 0.5
+        scaledP.position.y = msg.position.y/self.bag_scale
+        scaledP.position.z = msg.position.z/self.bag_scale + .25
+        scaledP.orientation = msg.orientation
+        scaledP.orientation.z = msg.orientation.y
+        scaledP.orientation.y = -msg.orientation.z
+
+        self.br.sendTransform((scaledP.position.x, scaledP.position.y, scaledP.position.z),
                               q, rospy.Time.now(), self.box_frame, 'map')
+
+        box_state = ModelState()
+        box_state.model_name = "box"
+        box_state.reference_frame = "/map"
+        box_state.pose = scaledP
+        self.box_pose.publish(box_state)
+
+    def cam_info_callback(self, msg):
+        K = msg.K
+        self.camera_matrix = np.asarray([[K[0], K[1], K[2]], [K[3], K[4], K[5]], [K[6], K[7], K[8]]])
+
+        camera = self.transform_cam(self.move_group.get_current_pose(), 0, -math.pi/2, 0)
+        camR = quaternion_matrix([camera.pose.orientation.x, camera.pose.orientation.y, camera.pose.orientation.z,
+                                  camera.pose.orientation.w])
+
+        self.rvec, _ = cv2.Rodrigues(np.asarray(camR))
+        self.tvec = [camera.pose.position.x, camera.pose.position.y, camera.pose.position.z]
 
     def get_obj(self):
         """
@@ -132,6 +144,7 @@ class InfoEntropy:
         rospack = rospkg.RosPack()
         pkgpath = rospack.get_path('info_entropy')
         stlpath = os.path.join(pkgpath, 'urdfs', 'box.STL')
+        # stlpath = os.path.join(pkgpath, 'urdfs', 'weird shape.STL')
 
         cube_mesh = mesh.Mesh.from_file(stlpath)
 
@@ -154,10 +167,13 @@ class InfoEntropy:
             entropy_vec -> [PoseStamped] weight avg of direction to move
         """
 
-        stp = 1.0      # dist to step in each direction
+        stp = 0.5      # dist to step in each direction
         # 7 possible positions: Current,       forward       back        left            right       up            down
         step_list = np.asarray([[0, 0, 0], [stp, 0, 0], [-stp, 0, 0], [0, stp, 0], [0, -stp, 0], [0, 0, stp], [0, 0, -stp]])
         num_poses = 7
+
+        pose_array = PoseArray()
+        pose_array.header.frame_id = '/map'
 
         cam_pose_array = []
         entropy_vals = []
@@ -167,12 +183,19 @@ class InfoEntropy:
 
             # create a new camera based on values of original camera
             new_cam = PoseStamped()
-            new_cam.header.frame_id = 'map'
-            new_cam.pose.orientation = camera.pose.orientation
+            new_cam.header.frame_id = camera.header.frame_id
+
+            # new_cam.pose.orientation = camera.pose.orientation
             new_cam.pose.position.x = camera.pose.position.x + s[0]
             new_cam.pose.position.y = camera.pose.position.y + s[1]
             new_cam.pose.position.z = camera.pose.position.z + s[2]
+
+            new_cam = self.listener.transformPose('/map', new_cam)
             cam_pose_array.append(new_cam)
+
+            # rospy.logdebug(new_cam)
+
+            pose_array.poses.append(new_cam.pose)
 
             camR = quaternion_matrix([new_cam.pose.orientation.x, new_cam.pose.orientation.y, new_cam.pose.orientation.z,
                                       new_cam.pose.orientation.w])
@@ -181,34 +204,52 @@ class InfoEntropy:
 
             facingPoses, facingIndex = self.get_cam_facing(new_cam, self.normPoses, math.pi)
             entropy = self.calc_entropy(facingIndex, rvec, tvec)
-            # print(s, facingIndex, entropy)
             entropy_vals.append(entropy)
 
         nentropy = np.linalg.norm(np.asarray(entropy_vals))     # get norm of entropy values
         if nentropy == 0.0:
             return PoseStamped()
 
+        self.new_camera_pub.publish(pose_array)
+
         # take weighted value of each x, y, z in camera pose
-        sum_pos = np.asarray([0.0, 0.0, 0.0])
+        sum_pos = np.asarray([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
         for i in range(len(cam_pose_array)):
             if math.isnan(entropy_vals[i]):
                 continue
 
             point = cam_pose_array[i].pose.position
+            ori = cam_pose_array[i].pose.orientation
             scale = math.fabs(entropy_vals[i])/nentropy
             sum_pos[0] += point.x * scale
             sum_pos[1] += point.y * scale
             sum_pos[2] += point.z * scale
 
+            sum_pos[3] += ori.x * scale
+            sum_pos[4] += ori.y * scale
+            sum_pos[5] += ori.z * scale
+            sum_pos[6] += ori.w * scale
+
         entropy_vec = PoseStamped()
-        entropy_vec.header.frame_id = 'map'
+        entropy_vec.header.frame_id = '/map'
         entropy_vec.header.stamp = rospy.Time.now()
-        entropy_vec.pose.orientation = camera.pose.orientation
         entropy_vec.pose.position.x = sum_pos[0]/num_poses
         entropy_vec.pose.position.y = sum_pos[1]/num_poses
         entropy_vec.pose.position.z = sum_pos[2]/num_poses
 
-        print(entropy_vec)
+        Q = Quaternion()
+        Q.x = sum_pos[3]/num_poses
+        Q.y = sum_pos[4]/num_poses
+        Q.z = sum_pos[5]/num_poses
+        Q.w = sum_pos[6]/num_poses
+
+        lenQ = math.sqrt(Q.x**2 + Q.y**2 + Q.z**2 + Q.w**2)
+
+        entropy_vec.pose.orientation.x = Q.x/lenQ
+        entropy_vec.pose.orientation.y = Q.y/lenQ
+        entropy_vec.pose.orientation.z = Q.z/lenQ
+        entropy_vec.pose.orientation.w = Q.w/lenQ
+
         self.entropy_vec_pub.publish(entropy_vec)
 
     def get_visible_faces(self):
@@ -320,14 +361,13 @@ class InfoEntropy:
             ba_q = self.dir_to_quaternion(ba.position)
 
             # check if within fov of camera
-            ang_cam = math.acos(self.quatdot(ba_q, a.orientation))*2
+            ang_cam = math.acos(self.quatdot(ba_q, a.orientation))
             if ang_cam > camera_ang/2:
                 f += 1
                 continue
 
             # dot between this vector and the normal
             fdot = self.quatdot(ba_q, b.orientation) * 2
-
             if math.fabs(fdot) < math.pi/2:
                 facingPoses.poses.append(npose)
                 facing_index[f] = 1     # list face as being seen
@@ -503,6 +543,22 @@ class InfoEntropy:
             trans_p = self.listener.transformPoint('map', point)
             trans_list.append([trans_p.point.x, trans_p.point.y, trans_p.point.z])
         return trans_list
+
+    def transform_cam(self, ps, roll, pitch, yaw):
+        rotq = tf_conversions.transformations.quaternion_from_euler(roll, pitch, yaw,  axes='rxyz')
+        new_ps = ps
+
+        ori = [0] * 4
+        ori[0] = ps.pose.orientation.x
+        ori[1] = ps.pose.orientation.y
+        ori[2] = ps.pose.orientation.z
+        ori[3] = ps.pose.orientation.w
+
+        q = tf_conversions.transformations.quaternion_multiply(ori, rotq)
+
+        new_ps.pose.orientation = Quaternion(q[0], q[1], q[2], q[3])
+
+        return new_ps
 
 
 

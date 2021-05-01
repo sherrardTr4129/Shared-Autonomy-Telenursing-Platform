@@ -1,0 +1,13 @@
+material YourMaterialName{
+    technique
+    {
+        pass
+        {
+            texture_unit
+            {
+                rainbow.jpeg
+                scale 1 1
+            }
+        }
+    }
+}

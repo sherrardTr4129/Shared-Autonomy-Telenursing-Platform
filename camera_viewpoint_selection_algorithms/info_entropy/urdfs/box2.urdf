@@ -11,20 +11,20 @@
     <visual>
       <origin xyz=" 0 0 0"/>
       <geometry>
-        <mesh filename="package://info_entropy/urdfs/box.STL" scale=".01 .01 .01" />
+        <mesh filename="package://info_entropy/urdfs/weird shape.STL" scale=".01 .01 .01" />
       </geometry>
     </visual>
 
     <collision>
       <origin xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://info_entropy/urdfs/box.STL" scale=".01 .01 .01" />
+        <mesh filename="package://info_entropy/urdfs/weird shape.STL" scale=".01 .01 .01" />
       </geometry>
     </collision>
 
     <gravity>0 0 -9.81</gravity>
   </link>
   <gazebo reference="box">
-    <material>Gazebo/Blue</material>
+    <material>rainbow</material>
   </gazebo>
 </robot>

@@ -21,7 +21,7 @@ from geometry_msgs.msg import Vector3Stamped
 SAL_VECTOR_WEIGHT = 0.5
 
 # declare topic names
-information_entropy_pose_topic = "entropy"
+information_entropy_pose_topic = "/trina2_1/entropy"
 saliency_max_vector_topic = "/saliency_move_vec"
 movePoseTopic = "/info_and_saliency_avg_pose"
 
