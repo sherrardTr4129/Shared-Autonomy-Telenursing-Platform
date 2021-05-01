@@ -3,7 +3,9 @@ Panels:
     Help Height: 0
     Name: Displays
     Property Tree Widget:
-      Expanded: ~
+      Expanded:
+        - /Pose1
+        - /Pose1/Status1
       Splitter Ratio: 0.4852941036224365
     Tree Height: 321
   - Class: rviz/Selection
@@ -782,7 +784,7 @@ Visualization Manager:
       Axes Radius: 0.10000000149011612
       Class: rviz/Pose
       Color: 255; 25; 0
-      Enabled: true
+      Enabled: false
       Head Length: 0.30000001192092896
       Head Radius: 0.10000000149011612
       Name: Pose
@@ -790,6 +792,37 @@ Visualization Manager:
       Shaft Radius: 0.05000000074505806
       Shape: Arrow
       Topic: /trina2_1/cam
+      Unreliable: false
+      Value: false
+    - Alpha: 1
+      Arrow Length: 0.30000001192092896
+      Axes Length: 0.30000001192092896
+      Axes Radius: 0.009999999776482582
+      Class: rviz/PoseArray
+      Color: 255; 25; 0
+      Enabled: false
+      Head Length: 0.07000000029802322
+      Head Radius: 0.029999999329447746
+      Name: PoseArray
+      Shaft Length: 0.23000000417232513
+      Shaft Radius: 0.009999999776482582
+      Shape: Arrow (Flat)
+      Topic: /trina2_1/cam_array
+      Unreliable: false
+      Value: false
+    - Alpha: 1
+      Axes Length: 1
+      Axes Radius: 0.10000000149011612
+      Class: rviz/Pose
+      Color: 255; 25; 0
+      Enabled: true
+      Head Length: 0.30000001192092896
+      Head Radius: 0.10000000149011612
+      Name: Pose
+      Shaft Length: 1
+      Shaft Radius: 0.05000000074505806
+      Shape: Arrow
+      Topic: /info_and_saliency_avg_pose
       Unreliable: false
       Value: true
   Enabled: true
@@ -820,25 +853,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 2.6056032180786133
+      Distance: 2.2599124908447266
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 2.4145071506500244
-        Y: -0.5857993960380554
-        Z: 1.8630951642990112
+        X: 2.6356730461120605
+        Y: 0.06529070436954498
+        Z: 1.3251110315322876
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.6147974133491516
+      Pitch: 0.5097972750663757
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 5.9971604347229
+      Yaw: 6.012160301208496
     Saved: ~
 Window Geometry:
   Camera:

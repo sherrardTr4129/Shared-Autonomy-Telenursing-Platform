@@ -45,7 +45,7 @@ class InfoEntropy:
         self.br = tf.TransformBroadcaster()
 
         # camera properties  ---------------------
-        self.move_group = moveit_commander.MoveGroupCommander("left_arm")
+        self.move_group = moveit_commander.MoveGroupCommander("right_arm")
         camera = PoseStamped()
         camera.header.frame_id = 'map'
         camera.pose.position.z = 1.5
@@ -77,7 +77,7 @@ class InfoEntropy:
 
         # subscriber
         rospy.Subscriber('/fused_BNO_Kinect_Pose', Pose, self.obj_pos_callback)
-        rospy.Subscriber('/trina2_1/left_arm_cam/color/camera_info', CameraInfo, self.cam_info_callback)
+        rospy.Subscriber('/trina2_1/right_arm_cam/color/camera_info', CameraInfo, self.cam_info_callback)
 
         # wait for listener for transformation to object
         self.listener = tf.TransformListener()
@@ -91,8 +91,8 @@ class InfoEntropy:
         while not rospy.is_shutdown():
             camera_ps = self.transform_cam(self.move_group.get_current_pose(), 0, -math.pi/2, 0)
 
-            rospy.logdebug("start-----------------------")
-            rospy.logdebug(camera_ps)
+            # rospy.logdebug("start-----------------------")
+            # rospy.logdebug(camera_ps)
             self.camera_pub.publish(camera_ps)
             self.normPoses = self.get_visible_faces()
 
@@ -106,7 +106,7 @@ class InfoEntropy:
         scaledP = Pose()
         scaledP.position.x = msg.position.x/self.bag_scale + 0.5
         scaledP.position.y = msg.position.y/self.bag_scale
-        scaledP.position.z = msg.position.z/self.bag_scale - 0.25
+        scaledP.position.z = msg.position.z/self.bag_scale
         scaledP.orientation = msg.orientation
 
         self.br.sendTransform((scaledP.position.x, scaledP.position.y, scaledP.position.z),
@@ -141,7 +141,8 @@ class InfoEntropy:
         """
         rospack = rospkg.RosPack()
         pkgpath = rospack.get_path('info_entropy')
-        stlpath = os.path.join(pkgpath, 'urdfs', 'box.STL')
+        # stlpath = os.path.join(pkgpath, 'urdfs', 'box.STL')
+        stlpath = os.path.join(pkgpath, 'urdfs', 'weird shape.STL')
 
         cube_mesh = mesh.Mesh.from_file(stlpath)
 
@@ -169,8 +170,6 @@ class InfoEntropy:
         step_list = np.asarray([[0, 0, 0], [stp, 0, 0], [-stp, 0, 0], [0, stp, 0], [0, -stp, 0], [0, 0, stp], [0, 0, -stp]])
         num_poses = 7
 
-        # step_list = np.asarray([[0, 0, 0]])
-        # num_poses = 1
         pose_array = PoseArray()
         pose_array.header.frame_id = '/map'
 
@@ -178,14 +177,13 @@ class InfoEntropy:
         entropy_vals = []
 
         # loop through the camera positions and get entropy at each
-        i = 0
         for s in step_list:
 
             # create a new camera based on values of original camera
             new_cam = PoseStamped()
             new_cam.header.frame_id = camera.header.frame_id
 
-            new_cam.pose.orientation = camera.pose.orientation
+            # new_cam.pose.orientation = camera.pose.orientation
             new_cam.pose.position.x = camera.pose.position.x + s[0]
             new_cam.pose.position.y = camera.pose.position.y + s[1]
             new_cam.pose.position.z = camera.pose.position.z + s[2]
@@ -193,7 +191,7 @@ class InfoEntropy:
             new_cam = self.listener.transformPose('/map', new_cam)
             cam_pose_array.append(new_cam)
 
-            rospy.logdebug(new_cam)
+            # rospy.logdebug(new_cam)
 
             pose_array.poses.append(new_cam.pose)
 
@@ -204,9 +202,7 @@ class InfoEntropy:
 
             facingPoses, facingIndex = self.get_cam_facing(new_cam, self.normPoses, math.pi)
             entropy = self.calc_entropy(facingIndex, rvec, tvec)
-            # rospy.logdebug("facingIndex %s Entropy %.2f", facingIndex, entropy)
             entropy_vals.append(entropy)
-            i += 1
 
         nentropy = np.linalg.norm(np.asarray(entropy_vals))     # get norm of entropy values
         if nentropy == 0.0:
@@ -226,6 +222,7 @@ class InfoEntropy:
             sum_pos[0] += point.x * scale
             sum_pos[1] += point.y * scale
             sum_pos[2] += point.z * scale
+
             sum_pos[3] += ori.x * scale
             sum_pos[4] += ori.y * scale
             sum_pos[5] += ori.z * scale
@@ -245,16 +242,12 @@ class InfoEntropy:
         Q.w = sum_pos[6]/num_poses
 
         lenQ = math.sqrt(Q.x**2 + Q.y**2 + Q.z**2 + Q.w**2)
-        # entropy_vec.pose.orientation = camera.pose.orientation
 
         entropy_vec.pose.orientation.x = Q.x/lenQ
         entropy_vec.pose.orientation.y = Q.y/lenQ
         entropy_vec.pose.orientation.z = Q.z/lenQ
         entropy_vec.pose.orientation.w = Q.w/lenQ
 
-        # rospy.logdebug(entropy_vec)
-
-        # print(entropy_vec)
         self.entropy_vec_pub.publish(entropy_vec)
 
     def get_visible_faces(self):
