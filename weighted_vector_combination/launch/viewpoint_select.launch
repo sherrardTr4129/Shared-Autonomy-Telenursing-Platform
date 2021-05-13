@@ -15,12 +15,12 @@
 
     <param name="robot_description" command="$(find xacro)/xacro.py '$(find info_entropy)/urdfs/box.urdf'"/>
 
-<!--     <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher"> -->
-<!--         <param name="use_gui" value="false"/> -->
-<!--     </node> -->
+    <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">
+        <param name="use_gui" value="false"/>
+    </node>
 
 <!--        --><!-- Combine joint values -->
-<!--     <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/> -->
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/>
 
 
 <!--     <node pkg="tf" type="static_transform_publisher" name="model_broadcaster" args=" -0.5 1.0 0.5 0 0 0 /map /box 100" /> -->

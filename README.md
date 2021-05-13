@@ -42,4 +42,7 @@ To run all the aforementioned functionallity at the same time, run the following
 
 ```bash
 roslaunch weighted_vector_combination viewpoint_select.launch 
+roslaunch info_entropy test.launch
 ```
+
+The bagfiles of the movement are too large to include. If anyone would like access to them feel free to contact any of the others. 
